@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AutoChess.Core;
 using AutoChess.View;
@@ -10,9 +11,16 @@ public class SandboxRunner : MonoBehaviour
     public UnitConfig unitAConfig;
     public UnitConfig unitBConfig;
     public GameObject unitPrefab;
+    public AIConfig aIConfig;
 
     private BattleWorld _world = new();
     private readonly Dictionary<string, UnitView> _views = new();
+
+
+    // debug mode
+    [SerializeField] private bool showDevUI = true;
+    private bool devPaused;
+    private bool prevDevPaused = false;
 
     void Start()
     {
@@ -21,8 +29,21 @@ public class SandboxRunner : MonoBehaviour
 
     void Update()
     {
-        if (_world.IsEnded) return;
+        // debug pause handling
+        // 从暂停 -> 恢复的瞬间（可选回写）
+        if (prevDevPaused && !devPaused)
+        {
+            SyncCoreFromViews();
+            SyncViewsFromCore();
+            Debug.Log("SyncCoreFromViews called.");
+        }
+        prevDevPaused = devPaused;
 
+        // 开发者暂停：不 Tick，也不覆盖位置
+        if (devPaused) return;
+
+
+        if (_world.IsEnded) return;
         _world.ResetLogs();
         _world.Tick(Time.deltaTime);
 
@@ -30,14 +51,17 @@ public class SandboxRunner : MonoBehaviour
         foreach (var u in _world.Units)
         {
             if (_views.TryGetValue(u.Id, out var v))
-                v.SetX(u.X);
+                v.SetPos(u.Position);
         }
 
         // print logs (MVP: spam is ok; later we can throttle)
         foreach (var log in _world.Logs)
-            Debug.Log(log.ToString());
+        {
+            // Debug.Log(log.ToString());
+        }
+
     }
-    private Unit CreateUnitFromConfig(UnitConfig cfg, Team team, float startX)
+    private Unit CreateUnitFromConfig(UnitConfig cfg, Team team, Vector2 startPos)
     {
         return new Unit(
             cfg.id,
@@ -47,20 +71,19 @@ public class SandboxRunner : MonoBehaviour
             cfg.atkInterval,
             cfg.moveSpeed,
             cfg.range,
-            startX
+            startPos
         );
     }
 
     private void InitWorld()
     {
         _world = new BattleWorld();
+        _world.AiConfig = aIConfig;
         _views.Clear();
 
         // create two units
-        // var u1 = new Unit("A1", Team.A, hp: 60, atk: 8, atkInterval: 0.8f, moveSpeed: 2.5f, range: 1.2f, startX: -4f);
-        // var u2 = new Unit("B1", Team.B, hp: 55, atk: 9, atkInterval: 1.0f, moveSpeed: 2.2f, range: 1.2f, startX:  4f);
-        var u1 = CreateUnitFromConfig(unitAConfig, Team.A, -4f);
-        var u2 = CreateUnitFromConfig(unitBConfig, Team.B,  4f);
+        var u1 = CreateUnitFromConfig(unitAConfig, Team.A, new Vector2(-4f, 0f));
+        var u2 = CreateUnitFromConfig(unitBConfig, Team.B, new Vector2(4f, 6f));
 
 
         _world.Add(u1);
@@ -79,7 +102,7 @@ public class SandboxRunner : MonoBehaviour
 
         view.unitId = u.Id;
         view.team = u.Team;
-        view.SetX(u.X);
+        view.SetPos(u.Position);
 
         // simple color
         var renderer = go.GetComponent<Renderer>();
@@ -87,5 +110,46 @@ public class SandboxRunner : MonoBehaviour
             renderer.material.color = u.Team == Team.A ? Color.cyan : Color.magenta;
 
         _views[u.Id] = view;
+    }
+
+    // debug helper: sync core unit positions from views
+    private void SyncCoreFromViews()
+    {
+        foreach (var u in _world.Units)
+        {
+            if (_views.TryGetValue(u.Id, out var v))
+            {
+                var p3 = v.transform.position;
+                // 和 UnitView.SetPos 保持一致：Vector2(x, z)
+                u.Position = new Vector2(p3.x, p3.z);
+            }
+        }
+    }
+    private void SyncViewsFromCore()
+    {
+        foreach (var u in _world.Units)
+        {
+            if (_views.TryGetValue(u.Id, out var v))
+            {
+                v.SetPos(u.Position);
+            }
+        }
+    }
+    private void ToggleDevPause()
+    {
+        devPaused = !devPaused;
+        Time.timeScale = devPaused ? 0f : 1f;
+    }
+
+    private void OnGUI()
+    {
+        if (!showDevUI) return;
+
+        const int w = 140, h = 40, pad = 12;
+        var rect = new Rect(Screen.width - w - pad, pad, w, h);
+
+        var label = devPaused ? "Resume (Dev)" : "Pause (Dev)";
+        if (GUI.Button(rect, label))
+            ToggleDevPause();
     }
 }

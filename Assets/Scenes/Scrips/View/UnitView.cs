@@ -8,11 +8,12 @@ namespace AutoChess.View
         public string unitId;
         public Team team;
 
-        public void SetX(float x)
-        {
-            var p = transform.position;
-            p.x = x;
-            transform.position = p;
-        }
+    public void SetPos(Vector2 pos)
+    {
+        var p = transform.position;
+        p.x = pos.x;
+        p.z = pos.y; // 注意：Vector2 的 y 映射到 Unity 的 z
+        transform.position = p;
+    }
     }
 }

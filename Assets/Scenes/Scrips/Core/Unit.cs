@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace AutoChess.Core
 {
@@ -14,13 +15,15 @@ namespace AutoChess.Core
         public float AtkInterval;   // seconds per attack
         public float MoveSpeed;     // units per second
         public float Range;         // attack range
-        public float X;             // 1D position for MVP
+        // public float X;   // 1D position for MVP
+        public Vector2 Position;    // 2D position
 
         private float _atkCooldown;
 
         public bool IsDead => Hp <= 0;
 
-        public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, float range, float startX)
+        public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, 
+                    float range, Vector2 startPos)
         {
             Id = id;
             Team = team;
@@ -29,9 +32,10 @@ namespace AutoChess.Core
             AtkInterval = atkInterval;
             MoveSpeed = moveSpeed;
             Range = range;
-            X = startX;
+            Position = startPos;
             _atkCooldown = 0f;
         }
+
 
         public void TickCooldown(float dt)
         {
