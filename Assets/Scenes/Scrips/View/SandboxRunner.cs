@@ -3,8 +3,12 @@ using AutoChess.Core;
 using AutoChess.View;
 using UnityEngine;
 
+
+
 public class SandboxRunner : MonoBehaviour
 {
+    public UnitConfig unitAConfig;
+    public UnitConfig unitBConfig;
     public GameObject unitPrefab;
 
     private BattleWorld _world = new();
@@ -33,6 +37,19 @@ public class SandboxRunner : MonoBehaviour
         foreach (var log in _world.Logs)
             Debug.Log(log.ToString());
     }
+    private Unit CreateUnitFromConfig(UnitConfig cfg, Team team, float startX)
+    {
+        return new Unit(
+            cfg.id,
+            team,
+            cfg.hp,
+            cfg.atk,
+            cfg.atkInterval,
+            cfg.moveSpeed,
+            cfg.range,
+            startX
+        );
+    }
 
     private void InitWorld()
     {
@@ -40,8 +57,11 @@ public class SandboxRunner : MonoBehaviour
         _views.Clear();
 
         // create two units
-        var u1 = new Unit("A1", Team.A, hp: 60, atk: 8, atkInterval: 0.8f, moveSpeed: 2.5f, range: 1.2f, startX: -4f);
-        var u2 = new Unit("B1", Team.B, hp: 55, atk: 9, atkInterval: 1.0f, moveSpeed: 2.2f, range: 1.2f, startX:  4f);
+        // var u1 = new Unit("A1", Team.A, hp: 60, atk: 8, atkInterval: 0.8f, moveSpeed: 2.5f, range: 1.2f, startX: -4f);
+        // var u2 = new Unit("B1", Team.B, hp: 55, atk: 9, atkInterval: 1.0f, moveSpeed: 2.2f, range: 1.2f, startX:  4f);
+        var u1 = CreateUnitFromConfig(unitAConfig, Team.A, -4f);
+        var u2 = CreateUnitFromConfig(unitBConfig, Team.B,  4f);
+
 
         _world.Add(u1);
         _world.Add(u2);
