@@ -34,11 +34,9 @@ public class SandboxRunner : MonoBehaviour
         if (prevDevPaused && !devPaused)
         {
             SyncCoreFromViews();
-            SyncViewsFromCore();
             Debug.Log("SyncCoreFromViews called.");
         }
         prevDevPaused = devPaused;
-
         // 开发者暂停：不 Tick，也不覆盖位置
         if (devPaused) return;
 
@@ -122,16 +120,6 @@ public class SandboxRunner : MonoBehaviour
                 var p3 = v.transform.position;
                 // 和 UnitView.SetPos 保持一致：Vector2(x, z)
                 u.Position = new Vector2(p3.x, p3.z);
-            }
-        }
-    }
-    private void SyncViewsFromCore()
-    {
-        foreach (var u in _world.Units)
-        {
-            if (_views.TryGetValue(u.Id, out var v))
-            {
-                v.SetPos(u.Position);
             }
         }
     }

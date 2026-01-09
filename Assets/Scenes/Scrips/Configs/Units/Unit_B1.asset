@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   id: B1
   hp: 55
-  atk: 9
+  atk: 25
   atkInterval: 1
   moveSpeed: 2.2
   range: 1.2
