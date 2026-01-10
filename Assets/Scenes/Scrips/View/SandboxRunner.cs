@@ -135,14 +135,17 @@ public class SandboxRunner : MonoBehaviour
 
     private void SpawnView(Unit u)
     {
+        float diameter = u.Radius != 0.0f ? u.Radius * 2f : 0.5f;
         var go = Instantiate(unitPrefab);
         go.name = $"Unit_{u.Id}";
         var view = go.GetComponent<UnitView>();
-        if (view == null) view = go.AddComponent<UnitView>();
 
+        if (view == null) view = go.AddComponent<UnitView>();
         view.unitId = u.Id;
         view.team = u.Team;
+        view.transform.localScale = Vector3.one * diameter;
         view.SetPos(u.Position);
+
 
         // simple color
         var renderer = go.GetComponent<Renderer>();

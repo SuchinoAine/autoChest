@@ -16,8 +16,7 @@ MonoBehaviour:
   hp: 200
   atk: 8
   atkInterval: 1.2
-  moveSpeed: 2.0
+  moveSpeed: 2
   range: 1.2
-  radius: 0.45
-  isRanged: false
-
+  redius: 0.45
+  isranged: 0
