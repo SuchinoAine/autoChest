@@ -18,5 +18,5 @@ MonoBehaviour:
   atkInterval: 1.4
   moveSpeed: 3.2
   range: 1.2
-  redius: 0.4
+  radius: 0.4
   isranged: 0

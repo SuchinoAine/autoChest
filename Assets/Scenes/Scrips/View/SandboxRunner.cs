@@ -1,22 +1,16 @@
-using System;
 using System.Collections.Generic;
+using AutoChess.Configs;
 using AutoChess.Core;
 using AutoChess.View;
 using UnityEngine;
 
-[Serializable]
-public class SpawnEntry
-    {
-        public UnitConfig config;
-        public Team team;
-        public Vector3 startPos;
-    }
 
 public class SandboxRunner : MonoBehaviour
 {
     public GameObject unitPrefab;
     public AIConfig aIConfig;
     private BattleWorld _world = new();
+    public BattleScenarioConfig scenario;
     public List<SpawnEntry> spawns = new();  // 生成用的单位列表
     private readonly Dictionary<string, UnitView> _views = new();
 
@@ -92,7 +86,7 @@ public class SandboxRunner : MonoBehaviour
             cfg.moveSpeed,
             cfg.range,
             startPos,
-            cfg.redius,
+            cfg.radius,
             cfg.isranged
         );
     }
@@ -104,19 +98,17 @@ public class SandboxRunner : MonoBehaviour
         _world = new BattleWorld();
         _world.AiConfig = aIConfig;
         _views.Clear();
+        var useSpawns = (scenario != null) ? scenario.spawns : spawns;
 
         // 空指针保护
-        if (spawns == null || spawns.Count == 0)
+        if (useSpawns == null || useSpawns.Count == 0)
         {
             Debug.LogWarning("No spawns configured in SandboxRunner.");
             return;
         }
-
         // spawn units according to spawn list
-
-        // 死生成 id 单位
         int idxA = 0, idxB = 0;
-        foreach (var s in spawns)
+        foreach (var s in useSpawns)
         {
             if (s == null || s.config == null) continue;
             // 生成唯一ID
@@ -183,7 +175,23 @@ public class SandboxRunner : MonoBehaviour
         var rect = new Rect(Screen.width - w - pad, pad, w, h);
 
         var label = devPaused ? "Resume (Dev)" : "Pause (Dev)";
-        if (GUI.Button(rect, label))
-            ToggleDevPause();
+        if (GUI.Button(rect, label))  ToggleDevPause();
+
+        if (scenario == null)
+        {
+            if (GUI.Button(new Rect(Screen.width - w - pad, pad + h + 8, w, h), "Sim x100"))
+                {
+                    var r = BattleSimulator.RunBatch(spawns, aIConfig, 100);
+                    Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
+                }
+        }
+        else
+        {
+            if (GUI.Button(new Rect(Screen.width - w - pad, pad + h + 8, w, h), "Sim x100"))
+                {
+                    var r = BattleSimulator.RunBatchByScenario(scenario, 100);
+                    Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
+                }
+        }
     }
 }

@@ -9,6 +9,6 @@ public class UnitConfig : ScriptableObject
     public float atkInterval;  // seconds per attack
     public float moveSpeed;
     public float range;  // attack range
-    public float redius; // unit size
+    public float radius; // unit size
     public bool isranged;  // is ranged unit
 }

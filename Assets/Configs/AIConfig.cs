@@ -12,7 +12,7 @@ public class AIConfig : ScriptableObject
     public float nearDistRef = 6.0f;    // 距离归一化参考
 
     [Header("Targeting Policy")]
-    public float wFocus = 0.2f;         // 集火权重（0.2~0.8）
+    public float wFocus = 0f;         // 集火权重（0.2~0.8）
     public float wPreferRangedTarget = 0.6f; // 远程打远程权重
 
 }

@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c13c26a834531a240ba9165be70ba377, type: 3}
-  m_Name: Unit_Melee_Fighter
+  m_Name: Unit_bag
   m_EditorClassIdentifier: 
-  id: Melee_Fighter
-  hp: 140
-  atk: 12
-  atkInterval: 1
-  moveSpeed: 2.5
+  id: Ranged_Support
+  hp: 50
+  atk: 1
+  atkInterval: 0.6
+  moveSpeed: 2
   range: 1.2
-  radius: 0.45
+  radius: 0.4
   isranged: 0
