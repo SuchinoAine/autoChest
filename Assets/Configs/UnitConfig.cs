@@ -6,7 +6,8 @@ public class UnitConfig : ScriptableObject
     public string id;
     public float hp;
     public float atk;
-    public float atkInterval;
+    public float atkInterval;  // seconds per attack
     public float moveSpeed;
-    public float range;
+    public float range;  // attack range
+    public float redius; // unit size
 }

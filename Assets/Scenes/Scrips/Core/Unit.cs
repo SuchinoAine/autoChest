@@ -9,21 +9,20 @@ namespace AutoChess.Core
     {
         public readonly string Id;
         public readonly Team Team;
-
         public float Hp;
         public float Atk;
         public float AtkInterval;   // seconds per attack
         public float MoveSpeed;     // units per second
         public float Range;         // attack range
-        // public float X;   // 1D position for MVP
-        public Vector2 Position;    // 2D position
+        public Vector3 Position;    // 3D position
+        public float Radius;        // unit size
 
         private float _atkCooldown;
 
         public bool IsDead => Hp <= 0;
 
         public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, 
-                    float range, Vector2 startPos)
+                    float range, Vector3 startPos, float radius)
         {
             Id = id;
             Team = team;
@@ -34,6 +33,7 @@ namespace AutoChess.Core
             Range = range;
             Position = startPos;
             _atkCooldown = 0f;
+            Radius = radius;
         }
 
 

@@ -4,18 +4,21 @@ using AutoChess.Core;
 using AutoChess.View;
 using UnityEngine;
 
-
+[Serializable]
+public class SpawnEntry
+    {
+        public UnitConfig config;
+        public Team team;
+        public Vector3 startPos;
+    }
 
 public class SandboxRunner : MonoBehaviour
 {
-    public UnitConfig unitAConfig;
-    public UnitConfig unitBConfig;
     public GameObject unitPrefab;
     public AIConfig aIConfig;
-
     private BattleWorld _world = new();
+    public List<SpawnEntry> spawns = new();  // 生成用的单位列表
     private readonly Dictionary<string, UnitView> _views = new();
-
 
     // debug mode
     [SerializeField] private bool showDevUI = true;
@@ -55,40 +58,78 @@ public class SandboxRunner : MonoBehaviour
         // print logs (MVP: spam is ok; later we can throttle)
         foreach (var log in _world.Logs)
         {
-            // Debug.Log(log.ToString());
+            if (log.Type == AutoChess.Core.LogType.Death)
+            {
+                // log.A = 死掉的单位 id
+                if (_views.TryGetValue(log.A, out var view))
+                {
+                    // 方案A：直接隐藏（推荐，后面方便做对象池）
+                    // view.gameObject.SetActive(false);
+
+                    // 方案B：播放死亡动画
+                    view.PlayDeathFade(0.25f); // 你可以调 0.2~0.5
+                    
+                    // 从字典移除，避免后续还去更新它
+                    _views.Remove(log.A);
+                }
+
+                // 如果你还有 _goById 之类的映射，也同步 Remove
+                // _goById.Remove(log.A);
+            }
+
+            Debug.Log(log.ToString());
         }
 
     }
-    private Unit CreateUnitFromConfig(UnitConfig cfg, Team team, Vector2 startPos)
+    private Unit CreateUnitFromConfig(string id, UnitConfig cfg, Team team, Vector3 startPos)
     {
         return new Unit(
-            cfg.id,
+            id,
             team,
             cfg.hp,
             cfg.atk,
             cfg.atkInterval,
             cfg.moveSpeed,
             cfg.range,
-            startPos
+            startPos,
+            cfg.redius
         );
     }
 
+
+    // -- Init & Spawn --
     private void InitWorld()
     {
         _world = new BattleWorld();
         _world.AiConfig = aIConfig;
         _views.Clear();
 
-        // create two units
-        var u1 = CreateUnitFromConfig(unitAConfig, Team.A, new Vector2(-4f, 0f));
-        var u2 = CreateUnitFromConfig(unitBConfig, Team.B, new Vector2(4f, 6f));
+        // 空指针保护
+        if (spawns == null || spawns.Count == 0)
+        {
+            Debug.LogWarning("No spawns configured in SandboxRunner.");
+            return;
+        }
+
+        // spawn units according to spawn list
+
+        // 死生成 id 单位
+        int idxA = 0, idxB = 0;
+        foreach (var s in spawns)
+        {
+            if (s == null || s.config == null) continue;
+            // 生成唯一ID
+            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";
+
+            // 用生成的 id 覆盖 config.id
+            // 如果 Unit 里 Id 是只读的（get-only），就直接在 CreateUnitFromConfig 里传入 id
+            var unit = CreateUnitFromConfig(id, s.config, s.team, s.startPos);
+
+            _world.Add(unit);
+            SpawnView(unit);
+        }
 
 
-        _world.Add(u1);
-        _world.Add(u2);
-
-        SpawnView(u1);
-        SpawnView(u2);
     }
 
     private void SpawnView(Unit u)
@@ -110,6 +151,7 @@ public class SandboxRunner : MonoBehaviour
         _views[u.Id] = view;
     }
 
+
     // debug helper: sync core unit positions from views
     private void SyncCoreFromViews()
     {
@@ -118,8 +160,8 @@ public class SandboxRunner : MonoBehaviour
             if (_views.TryGetValue(u.Id, out var v))
             {
                 var p3 = v.transform.position;
-                // 和 UnitView.SetPos 保持一致：Vector2(x, z)
-                u.Position = new Vector2(p3.x, p3.z);
+                // 和 UnitView.SetPos
+                u.Position = new Vector3(p3.x, p3.y ,p3.z);
             }
         }
     }
