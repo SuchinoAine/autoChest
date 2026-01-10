@@ -151,10 +151,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 11215d3c9dadb7b448c4d37ac40fe7b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  unitAConfig: {fileID: 11400000, guid: 8baa0bdc9b763a641b0148ced569c317, type: 2}
-  unitBConfig: {fileID: 11400000, guid: 703cb08d891b9f9408a083c41f671b25, type: 2}
   unitPrefab: {fileID: 323378178}
   aIConfig: {fileID: 11400000, guid: 25700a81b0a91c04f9253c7a6e8a1e11, type: 2}
+  spawns:
+  - config: {fileID: 11400000, guid: 8baa0bdc9b763a641b0148ced569c317, type: 2}
+    team: 0
+    startPos: {x: 0, y: 0, z: 12}
+  - config: {fileID: 11400000, guid: b917f5f1ec4e9f94d94785bdf4808b32, type: 2}
+    team: 0
+    startPos: {x: 4, y: 0, z: 12}
+  - config: {fileID: 11400000, guid: b4832839db2fa8d4f865c326efd78c08, type: 2}
+    team: 0
+    startPos: {x: -4, y: 0, z: 12}
+  - config: {fileID: 11400000, guid: 703cb08d891b9f9408a083c41f671b25, type: 2}
+    team: 1
+    startPos: {x: 0, y: 0, z: -12}
+  - config: {fileID: 11400000, guid: babed4c8d3b39404d96580a83f7028a2, type: 2}
+    team: 1
+    startPos: {x: 4, y: 0, z: -12}
+  - config: {fileID: 11400000, guid: 9a68fd5ef210f3b4caaf78e50175b986, type: 2}
+    team: 1
+    startPos: {x: -4, y: 0, z: -12}
   showDevUI: 1
 --- !u!4 &157495306
 Transform:

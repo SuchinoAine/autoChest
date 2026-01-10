@@ -10,11 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c13c26a834531a240ba9165be70ba377, type: 3}
-  m_Name: Unit_B1 2
+  m_Name: Unit_Ranged_Mage
   m_EditorClassIdentifier: 
-  id: B1
-  hp: 55
-  atk: 25
-  atkInterval: 1
-  moveSpeed: 2.2
-  range: 1.2
+  id: Ranged_Mage
+  hp: 80
+  atk: 30
+  atkInterval: 1.8
+  moveSpeed: 2
+  range: 5
+  redius: 0
+  isranged: 0

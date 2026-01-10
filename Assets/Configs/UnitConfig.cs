@@ -10,4 +10,5 @@ public class UnitConfig : ScriptableObject
     public float moveSpeed;
     public float range;  // attack range
     public float redius; // unit size
+    public bool isranged;  // is ranged unit
 }

@@ -10,11 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c13c26a834531a240ba9165be70ba377, type: 3}
-  m_Name: Unit_A1 2
+  m_Name: Unit_Ranged_Archer
   m_EditorClassIdentifier: 
-  id: A1
-  hp: 60
-  atk: 8
-  atkInterval: 0.8
-  moveSpeed: 2.5
-  range: 1.2
+  id: Ranged_Archer
+  hp: 100
+  atk: 18
+  atkInterval: 1
+  moveSpeed: 2.2
+  range: 5
+  redius: 0
+  isranged: 0

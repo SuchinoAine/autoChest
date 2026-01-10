@@ -92,7 +92,8 @@ public class SandboxRunner : MonoBehaviour
             cfg.moveSpeed,
             cfg.range,
             startPos,
-            cfg.redius
+            cfg.redius,
+            cfg.isranged
         );
     }
 

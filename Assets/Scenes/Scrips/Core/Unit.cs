@@ -16,13 +16,14 @@ namespace AutoChess.Core
         public float Range;         // attack range
         public Vector3 Position;    // 3D position
         public float Radius;        // unit size
+        public bool Isranged;       // is ranged unit
 
         private float _atkCooldown;
 
         public bool IsDead => Hp <= 0;
 
         public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, 
-                    float range, Vector3 startPos, float radius)
+                    float range, Vector3 startPos, float radius, bool isranged)
         {
             Id = id;
             Team = team;
@@ -34,6 +35,7 @@ namespace AutoChess.Core
             Position = startPos;
             _atkCooldown = 0f;
             Radius = radius;
+            Isranged = isranged;
         }
 
 

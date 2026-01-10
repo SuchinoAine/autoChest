@@ -18,6 +18,9 @@ namespace AutoChess.Core
         private const float SeparationWeight = 2.0f;    // 分离强度
         private const float SeparationRange = 1.5f;     // 作用范围
         private const float MaxSeparationSpeed = 3.0f;  // 分离附加速度上限
+        private const float StrafeWeight = 0.35f;   // 侧移强度（0.2~0.5）
+        private const float RangeEpsilon = 0.05f;   // 射程边界滞回，防抖
+
 
 
         public void Tick(float dt)
@@ -30,6 +33,7 @@ namespace AutoChess.Core
             // actions: simple order
             foreach (var u in Units)
             {
+                //  判死判空
                 if (u.IsDead) continue;
                 var target = FindBestTargetByScore(u);
                 if (target == null) continue;
@@ -50,31 +54,62 @@ namespace AutoChess.Core
                             // SelfDeath log
                             Logs.Add(new BattleLog(LogType.Death, Time, target.Id, "", u.Position, 0));
                         }
-                            
+
                     }
                 }
+                // out of range -> move toward
+                // out of range -> move toward (melee) / advance-or-strafe (ranged)
                 else
                 {
-                    // 带 separation 的 move toward target 移动方向
                     Vector3 toTarget = target.Position - u.Position;
                     toTarget.y = 0f;
-                    Vector3 dirToTarget = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector3.zero;
+                    float distToTarget = toTarget.magnitude;
+
+                    Vector3 dirToTarget = Vector3.zero;
+                    Vector3 strafe = Vector3.zero;
+
+                    if (u.Isranged)
+                    {
+                        // 远程：只有超出射程才前进；射程内不后撤，做轻微侧移找位
+                        if (distToTarget > u.Range + RangeEpsilon)
+                        {
+                            dirToTarget = (distToTarget > 0.0001f) ? (toTarget / distToTarget) : Vector3.zero;
+                            strafe = Vector3.zero;
+                        }
+                        else
+                        {
+                            dirToTarget = Vector3.zero;
+
+                            // XZ 平面垂直方向：(-z, 0, x)
+                            Vector3 perp = new Vector3(-toTarget.z, 0f, toTarget.x);
+                            if (perp.sqrMagnitude > 0.0001f)
+                            {
+                                perp.Normalize();
+                                int side = SideSignFromId(u.Id);
+                                strafe = perp * (StrafeWeight * side);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // 近战：保持追击（你原来的逻辑）
+                        dirToTarget = (distToTarget > 0.0001f) ? (toTarget / distToTarget) : Vector3.zero;
+                    }
+
                     Vector3 sep = ComputeSeparation(u);
 
-                    // 合成移动方向
-                    Vector3 moveDir = dirToTarget + SeparationWeight * sep;
+                    // 合成移动方向：追击/侧移 + 分离
+                    Vector3 moveDir = dirToTarget + strafe + SeparationWeight * sep;
                     if (moveDir.sqrMagnitude > 0.0001f) moveDir = moveDir.normalized;
 
-                    // 更新位置
                     Vector3 oldPos = u.Position;
                     u.Position += moveDir * u.MoveSpeed * dt;
                     u.Position = new Vector3(u.Position.x, 0f, u.Position.z);
 
-                    // 可选：防抖
-                    if (Vector3.Distance(target.Position, u.Position) < 0.01f)
+                    // 可选：防抖（仅对近战追击更有意义, 留着也没问题）
+                    if (!u.Isranged && Vector3.Distance(target.Position, u.Position) < 0.01f)
                         u.Position = target.Position;
 
-                    // log
                     if ((u.Position - oldPos).sqrMagnitude > 0.0001f)
                         Logs.Add(new BattleLog(LogType.Move, Time, u.Id, "", u.Position, 0));
                 }
@@ -159,6 +194,17 @@ namespace AutoChess.Core
             }
 
             return sep;
+        }
+        private static int SideSignFromId(string id)
+        {
+            // 固定左右：保证同一单位每局一致（也利于复现）
+            unchecked
+            {
+                int hash = 17;
+                for (int i = 0; i < id.Length; i++)
+                    hash = hash * 31 + id[i];
+                return (hash & 1) == 0 ? 1 : -1; // 1=右，-1=左
+            }
         }
 
 

@@ -10,11 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c13c26a834531a240ba9165be70ba377, type: 3}
-  m_Name: Unit_B1 0
+  m_Name: Unit_Melee_Assassin
   m_EditorClassIdentifier: 
-  id: B1
-  hp: 55
-  atk: 25
-  atkInterval: 1
-  moveSpeed: 2.2
+  id: Melee_Assassin
+  hp: 90
+  atk: 20
+  atkInterval: 1.4
+  moveSpeed: 3.2
   range: 1.2
+  redius: 0
+  isranged: 0
