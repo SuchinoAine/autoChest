@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using AutoChess.Core;
 using AutoChess.Configs;
+using TMPro;
 
 public static class BattleSimulator
 {
@@ -24,7 +25,11 @@ public static class BattleSimulator
         float sumTime = 0f;
         for (int i = 0; i < runs; i++)
         {
-            var world = BuildWorld(spawns, aiConfig);
+            var ai = Object.Instantiate(aiConfig);
+            ai.battleSeed = aiConfig.battleSeed + i; // 每局不同，但可复现
+            var world = BuildWorld(spawns, ai);
+            Debug.Log($"[BattleSimulator] Run {i + 1}/{runs} with seed {world.AiConfig.battleSeed}");
+
             float t = 0f;
             while (!world.IsEnded && t < maxTime)
             {
@@ -37,7 +42,7 @@ public static class BattleSimulator
             foreach (var u in world.Units)
             {
                 if (u.IsDead) continue;
-                if (u.Team == Team.A) aAlive = true;
+                if (u.Team == Team.A) aAlive = true;  
                 if (u.Team == Team.B) bAlive = true;
             }
 
@@ -72,7 +77,7 @@ public static class BattleSimulator
                 cfg.atkInterval,
                 cfg.moveSpeed,
                 cfg.range,
-                new Vector3(s.startPos.x, 0f, s.startPos.y),
+                new Vector3(s.startPos.x, 0f, s.startPos.z),
                 cfg.radius,
                 cfg.isranged
                 

@@ -10,6 +10,7 @@ namespace AutoChess.Core
         public readonly List<Unit> Units = new();
         public readonly List<BattleLog> Logs = new();
         public float Time { get; private set; }
+        public int _tickIndex { get; private set; } = 0;
         public bool IsEnded { get; private set; }
         public Team? Winner { get; private set; }
         public void Add(Unit u) => Units.Add(u);  // 添加单位
@@ -43,9 +44,17 @@ namespace AutoChess.Core
             }
             // 索敌清空
             _focusCount.Clear();
-            // actions: simple order
-            foreach (var u in Units)
+            
+            // 每帧换一个起点：让“谁先行动”在长期统计上均匀
+            int n = Units.Count;
+            if (n == 0) return;
+            int start = _tickIndex % n;
+            // actions: better order
+            for (int k = 0; k < n; k++)
             {
+                Unit u = Units[(start + k) % n];
+
+
                 //  判死判空
                 if (u.IsDead) continue;
                 //  select target
@@ -101,7 +110,7 @@ namespace AutoChess.Core
                             if (perp.sqrMagnitude > 0.0001f)
                             {
                                 perp.Normalize();
-                                int side = SideSignFromId(u.Id);
+                                int side = SideSignFromId(u, target);
 
                                 // 只有在“确实挤”时才侧移，避免两射手互锁定就一直漂
                                 float sepMag = sep.magnitude; // 注意：这里需要 sep 在此之前先算出来
@@ -159,6 +168,8 @@ namespace AutoChess.Core
                         Logs.Add(new BattleLog(LogType.Move, Time, u.Id, "", u.Position, 0));
                 }
             }
+            // tick index++
+            _tickIndex++;
             CheckEnd();
         }
 
@@ -213,6 +224,13 @@ namespace AutoChess.Core
             float wPreferRanged = AiConfig != null ? AiConfig.wPreferRangedTarget : 0.6f;
             float nearRef = AiConfig != null ? AiConfig.nearDistRef : 6.0f;
 
+            // decision Rng part
+            int seed = (AiConfig != null) ? AiConfig.battleSeed : 12345;
+            int q = (AiConfig != null && AiConfig.tickQuant > 0) ? AiConfig.tickQuant : 1;
+            int jt = _tickIndex / q;
+            float jitterAmp = (AiConfig != null) ? AiConfig.targetJitter : 0f;
+            float jtScore = jitterAmp * DecisionRng.Signed(seed, DecisionStream.TargetJitter, self.Id, target.Id, jt);
+
             float dist = Vector3.Distance(target.Position, self.Position);
             // 1) 残血优先
             float lowHpScore = 1f / (target.Hp + 1f);
@@ -234,7 +252,8 @@ namespace AutoChess.Core
                 wNear * nearScore +
                 wKillable * killableScore +
                 wFocus * focusScore +
-                wPreferRanged * preferRangedScore;
+                wPreferRanged * preferRangedScore+
+                jtScore;
 
             return total;
         }
@@ -273,16 +292,22 @@ namespace AutoChess.Core
 
             return sep;
         }
-        private static int SideSignFromId(string id)
+        private int SideSignFromId(Unit u, Unit target)
         {
             // 固定左右：保证同一单位每局一致（也利于复现）
-            unchecked
-            {
-                int hash = 17;
-                for (int i = 0; i < id.Length; i++)
-                    hash = hash * 31 + id[i];
-                return (hash & 1) == 0 ? 1 : -1; // 1=右，-1=左
-            }
+            int seed = AiConfig != null ? AiConfig.battleSeed : 12345;
+            // 每 30 tick 才可能换一次
+            int sideTick = _tickIndex / 30; 
+
+            int side = DecisionRng.Coin(
+                seed,
+                DecisionStream.StrafeSide,
+                u.Id,
+                target.Id,
+                sideTick,
+                0.5f
+            ) ? 1 : -1;
+            return side;
         }
         private void CheckEnd()
         {
@@ -295,6 +320,7 @@ namespace AutoChess.Core
             Winner = aliveA ? Team.A : Team.B;
             var winnerName = Winner == Team.A ? "TeamA" : "TeamB";
             Logs.Add(new BattleLog(LogType.End, Time, winnerName, "", Vector3.zero, 0));
+            Debug.Log($"[BattleWorld] Battle ended at time {Time:F2}s, {_tickIndex}t. Winner: {winnerName}");
         }
 
         //  解决单位间重叠（攻击后调用）
