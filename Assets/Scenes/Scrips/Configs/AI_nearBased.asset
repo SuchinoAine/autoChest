@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3b50d2291b0e9fb4690d279a7e027928, type: 3}
   m_Name: AI_nearBased
   m_EditorClassIdentifier: 
-  wLowHp: 1
-  wNear: 0.7
-  wKillable: 1.5
-  nearDistRef: 6
-  wFocus: 0.4
-  wPreferRangedTarget: 0.6
-  battleSeed: 45678
+  wLowHp: 0.6
+  wNear: 1.6
+  wKillable: 1
+  nearDistRef: 7
+  wFocus: 0.5
+  wPreferRangedTarget: 0.3
+  battleSeed: 45670
   targetJitter: 0.02
-  tickQuant: 5
+  tickQuant: 50

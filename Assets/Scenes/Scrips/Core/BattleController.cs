@@ -16,6 +16,9 @@ namespace AutoChess.Core
         private const float StrafeSepThreshold = 0.12f; // sep 超过这个才允许侧移（看起来像“被挤了才走位”）
         private const float DesiredRangeFactor = 0.95f; // 希望保持在 range*0.95 附近
         private const float RadialPullWeight = 0.25f;   // 拉回强度（很小）
+        // ✅ 新增：PBD 碰撞解算参数
+        private const int CollisionIters = 3;           // 2~4 都行
+        private const float DistEps = 1e-4f;
 
         public void StepUnit(BattleWorld world, Unit u, float dt)
         {
@@ -41,8 +44,7 @@ namespace AutoChess.Core
 
                     if (target.IsDead)
                     {
-                        // ✅ 死亡事件：不再依赖 log 扫描
-                        world.EmitDeath(target, u);
+                        world.EmitDeath(target, u); // 死亡事件
                     }
                 }
             }
@@ -75,10 +77,7 @@ namespace AutoChess.Core
                             // 只有在确实挤时才侧移，避免两射手互锁定就一直漂
                             int side = SideSignFromRng(world, u, target);
                             float sepMag = sep.magnitude;
-                            if (sepMag > StrafeSepThreshold)
-                                strafe = perp * (StrafeWeight * side);
-                            else
-                                strafe = Vector3.zero;
+                            strafe = (sepMag > StrafeSepThreshold) ? (perp * (StrafeWeight * side)) : Vector3.zero;
                         }
                         // 轻微拉回：如果因为各种原因距离被拉大了，就给一点点向目标方向的分量
                         float desired = u.Range * DesiredRangeFactor;
@@ -102,23 +101,25 @@ namespace AutoChess.Core
                 Vector3 nextPos = u.Position + moveDir * u.MoveSpeed * dt;
                 nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
 
+                // ✅ 核心：硬碰撞（圆-圆不重叠）投影解算
+                ResolveCircleCollisions(world, u, ref nextPos);
                 // 只要本帧有“向目标推进”的趋势，就做“停在接触距离”，避免穿模粘住
                 //（对远程也安全：远程射程内 dirToTarget=0，forward≈0，不会触发）
-                if (distToTarget > 0.0001f)
-                {
-                    Vector3 dirTo = toTarget / distToTarget;    // 指向目标的单位向量
-                    float forward = Vector3.Dot(moveDir, dirTo);// moveDir 在追击方向上的分量
-                    if (forward > 0.001f)
-                    {
-                        float minDist = u.Radius + target.Radius + ContactEpsilon;
-                        float nextDist = Vector3.Distance(nextPos, target.Position);
-                        if (nextDist < minDist)
-                        {
-                            nextPos = target.Position - dirTo * minDist;
-                            nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
-                        }
-                    }
-                }
+                // if (distToTarget > 0.0001f)
+                // {
+                //     Vector3 dirTo = toTarget / distToTarget;    // 指向目标的单位向量
+                //     float forward = Vector3.Dot(moveDir, dirTo);// moveDir 在追击方向上的分量
+                //     if (forward > 0.001f)
+                //     {
+                //         float minDist = u.Radius + target.Radius + ContactEpsilon;
+                //         float nextDist = Vector3.Distance(nextPos, target.Position);
+                //         if (nextDist < minDist)
+                //         {
+                //             nextPos = target.Position - dirTo * minDist;
+                //             nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
+                //         }
+                //     }
+                // }
                 u.Position = nextPos;
                 // u.Position = new Vector3(u.Position.x, 0f, u.Position.z);
                 if ((u.Position - oldPos).sqrMagnitude > 0.0001f)
@@ -126,7 +127,52 @@ namespace AutoChess.Core
             }
         }
 
-        // ======= 下面这些方法：从 BattleWorld 原样搬过来，只把字段改成 world.xxx =======
+        /// <summary>
+        /// 使用 PBD 碰撞解算避免单位重叠
+        /// </summary>
+        private void ResolveCircleCollisions(BattleWorld world, Unit self, ref Vector3 nextPos)
+        {
+            // 固定遍历顺序 + 固定迭代次数 => deterministic
+            for (int iter = 0; iter < CollisionIters; iter++)
+            {
+                bool changed = false;
+                for (int i = 0; i < world.Units.Count; i++)
+                {
+                    var other = world.Units[i];
+                    if (other == self) continue;
+                    if (other.IsDead) continue;
+                    Vector3 a = nextPos;
+                    Vector3 b = other.Position;
+                    a.y = 0f; b.y = 0f;
+                    Vector3 d = a - b;
+
+                    float distSq = d.sqrMagnitude;
+                    float minDist = self.Radius + other.Radius + ContactEpsilon;
+                    float minDistSq = minDist * minDist;
+
+                    if (distSq >= minDistSq) continue;
+                    float dist = Mathf.Sqrt(Mathf.Max(distSq, DistEps));
+                    Vector3 n;
+                    // 如果几乎重合：给一个稳定方向，避免 NaN 和抖动
+                    if (dist < 1e-3f)
+                    {
+                        int side = SideSignFromRng(world, self, other); //deterministic rng
+                        n = (side > 0) ? Vector3.right : Vector3.left;
+                    }
+                    else
+                    {
+                        n = d / dist;
+                    }
+                    // 投影到刚好不重叠的位置
+                    nextPos = b + n * minDist;
+                    nextPos.y = 0f;
+                    changed = true;
+                }
+
+                if (!changed) break;
+            }
+        }
+
         /// <summary>
         /// 寻找评分最高的目标，优先在射程内
         /// </summary>

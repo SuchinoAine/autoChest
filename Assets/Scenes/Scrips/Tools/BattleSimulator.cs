@@ -28,7 +28,7 @@ public static class BattleSimulator
             var ai = Object.Instantiate(aiConfig);
             ai.battleSeed = aiConfig.battleSeed + i; // 每局不同，但可复现
             var world = BuildWorld(spawns, ai);
-            Debug.Log($"[BattleSimulator] Run {i + 1}/{runs} with seed {world.AiConfig.battleSeed}");
+
 
             float t = 0f;
             while (!world.IsEnded && t < maxTime)
@@ -42,12 +42,23 @@ public static class BattleSimulator
             foreach (var u in world.Units)
             {
                 if (u.IsDead) continue;
-                if (u.Team == Team.A) aAlive = true;  
+                if (u.Team == Team.A) aAlive = true;
                 if (u.Team == Team.B) bAlive = true;
             }
 
-            if (aAlive && !bAlive) aWins++;
-            else if (bAlive && !aAlive) bWins++;
+            if (aAlive && !bAlive)
+            {
+                aWins++;
+                Debug.Log($"[BattleSimulator] Run {i + 1}/{runs} with seed {world.AiConfig.battleSeed}: Team A wins.");
+            }
+            else if (bAlive && !aAlive)
+            {
+                bWins++;
+                Debug.Log($"[BattleSimulator] Run {i + 1}/{runs} with seed {world.AiConfig.battleSeed}: Team B wins.");
+            }else
+            {
+                Debug.Log($"[BattleSimulator] Run {i + 1}/{runs} with seed {world.AiConfig.battleSeed}: Draw.");
+            }
         }
         return new SimResult
         {
@@ -83,7 +94,7 @@ public static class BattleSimulator
                 new Vector3(s.startPos.x, 0f, s.startPos.z),
                 cfg.radius,
                 cfg.isranged
-                
+
             );
             world.Add(unit);
         }
