@@ -39,14 +39,16 @@ namespace AutoChess.View
 
             while (t < duration)
             {
-                t += Time.unscaledDeltaTime; // ✅ 就算你以后暂停 timeScale 也能播完
+                // ✅ 就算你以后暂停 timeScale 也能播完
+                t += Time.unscaledDeltaTime; 
                 float k = Mathf.Clamp01(t / duration);
                 transform.localScale = Vector3.Lerp(start, end, k);
                 yield return null;
             }
 
+            // ✅ 暂时直接隐藏，后期你再做对象池/尸体
             transform.localScale = end;
-            gameObject.SetActive(false);   // ✅ 暂时直接隐藏，后期你再做对象池/尸体
+            gameObject.SetActive(false);   
         }
 
         // 如果你以后要复用（Reset/复活）：

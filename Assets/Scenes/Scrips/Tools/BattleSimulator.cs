@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using AutoChess.Core;
 using AutoChess.Configs;
-using TMPro;
+
 
 public static class BattleSimulator
 {
@@ -61,6 +61,9 @@ public static class BattleSimulator
     {
         var world = new BattleWorld();
         world.AiConfig = aiConfig;
+        world.BattleController = new BattleController();
+        world.Sinks.Clear();
+
 
         int idxA = 0, idxB = 0;
 

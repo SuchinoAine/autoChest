@@ -11,9 +11,7 @@ namespace AutoChess.Core
         public readonly string A;
         public readonly string B;
         public readonly float Value;
-        public readonly float X_Value;
-        public readonly float Y_Value;
-        public readonly float Z_Value;
+        public readonly Vector3 Position;
 
         public BattleLog(LogType type, float time, string a, string b, Vector3 pos, float value)
         {
@@ -22,16 +20,14 @@ namespace AutoChess.Core
             A = a;
             B = b;
             Value = value;
-            X_Value = pos.x;
-            Y_Value = pos.y;
-            Z_Value = pos.z;
+            Position = pos;
         }
 
         public override string ToString()
         {
             return Type switch
             {
-                LogType.Move   => $"[{Time:F2}] {A} moves to {X_Value:F2},{Z_Value:F2}",
+                LogType.Move   => $"[{Time:F2}] {A} moves to {Position.x:F2},{Position.z:F2}",
                 LogType.Attack => $"[{Time:F2}] {A} hits {B} for {Value:F1}",
                 LogType.Death  => $"[{Time:F2}] {A} died",
                 LogType.End    => $"[{Time:F2}] Battle end. Winner: {A}",

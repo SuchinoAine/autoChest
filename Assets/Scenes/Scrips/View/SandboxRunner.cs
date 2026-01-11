@@ -15,10 +15,9 @@ public class SandboxRunner : MonoBehaviour
     private readonly Dictionary<string, UnitView> _views = new();
 
     [Header("Simulation")]
-    [SerializeField] private float simDt = 0.02f; // 50 tick/s
-    [SerializeField] private int maxStepsPerFrame = 8; // 防止卡顿时死循环追帧
+    [SerializeField] private float simDt = 0.02f;       // 50 tick/s
+    [SerializeField] private int maxStepsPerFrame = 8;  // 防止卡顿时死循环追帧
     private float _accum;
-
 
     // debug mode
     [SerializeField] private bool showDevUI = true;
@@ -35,7 +34,6 @@ public class SandboxRunner : MonoBehaviour
 
     void Update()
     {
-        // debug pause handling
         // 从暂停 -> 恢复的瞬间（可选回写）
         if (prevDevPaused && !devPaused)
         {
@@ -47,48 +45,19 @@ public class SandboxRunner : MonoBehaviour
         if (devPaused) return;
         if (_world.IsEnded) return;
 
+        // 累积真实帧间隔时间, 防止 Debug 暂停/切后台回来 accum 爆炸
         float dt = simDt;
-        // 累积真实帧间隔时间
         _accum += Time.deltaTime;
-        // 防止 Debug 暂停/切后台回来 accum 爆炸
         _accum = Mathf.Min(_accum, dt * maxStepsPerFrame);
         int steps = 0;
         while (_accum >= dt && steps < maxStepsPerFrame)
         {
-            _world.ResetLogs();
             _world.Tick(dt);
-            // apply positions to views
-            foreach (var u in _world.Units)
-            {
-                if (_views.TryGetValue(u.Id, out var v))
-                    v.SetPos(u.Position);
-            }
-
-            // print logs (MVP: spam is ok; later we can throttle)
-            foreach (var log in _world.Logs)
-            {
-                if (log.Type == AutoChess.Core.LogType.Death)
-                {
-                    // log.A = 死掉的单位 id
-                    if (_views.TryGetValue(log.A, out var view))
-                    {
-                        // 方案A：直接隐藏（推荐，后面方便做对象池）
-                        // view.gameObject.SetActive(false);
-                        // 方案B：播放死亡动画
-                        view.PlayDeathFade(0.25f); // 你可以调 0.2~0.5
-                        // 从字典移除，避免后续还去更新它
-                        _views.Remove(log.A);
-                    }
-                    // 如果还有 _goById 之类的映射，也同步 Remove
-                    // _goById.Remove(log.A);
-
-                }
-                Debug.Log(log.ToString());
-            }
             _accum -= dt;
             steps++;
         }
     }
+
     private Unit CreateUnitFromConfig(string id, UnitConfig cfg, Team team, Vector3 startPos)
     {
         return new Unit(
@@ -105,14 +74,16 @@ public class SandboxRunner : MonoBehaviour
         );
     }
 
-
-    // -- Init & Spawn --
     private void InitWorld()
     {
+        // -- Init & Spawn --
         _world = new BattleWorld();
         _world.AiConfig = aIConfig;
-
+        _world.BattleController = new BattleController();
+        _world.Sinks.Clear();
         _views.Clear();
+        _world.AddSink(new BattleViewSink(_views));
+
         var useSpawns = (scenario != null) ? scenario.spawns : spawns;
 
         // 空指针保护
@@ -126,18 +97,12 @@ public class SandboxRunner : MonoBehaviour
         foreach (var s in useSpawns)
         {
             if (s == null || s.config == null) continue;
-            // 生成唯一ID
-            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";
-
-            // 用生成的 id 覆盖 config.id
-            // 如果 Unit 里 Id 是只读的（get-only），就直接在 CreateUnitFromConfig 里传入 id
+            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";  // 生成唯一ID
             var unit = CreateUnitFromConfig(id, s.config, s.team, s.startPos);
 
             _world.Add(unit);
             SpawnView(unit);
         }
-
-
     }
 
     private void SpawnView(Unit u)
@@ -162,10 +127,9 @@ public class SandboxRunner : MonoBehaviour
         _views[u.Id] = view;
     }
 
-
-    // debug helper: sync core unit positions from views
     private void SyncCoreFromViews()
     {
+        // debug helper: sync core unit positions from views
         foreach (var u in _world.Units)
         {
             if (_views.TryGetValue(u.Id, out var v))
@@ -176,6 +140,7 @@ public class SandboxRunner : MonoBehaviour
             }
         }
     }
+
     private void ToggleDevPause()
     {
         devPaused = !devPaused;
@@ -213,6 +178,6 @@ public class SandboxRunner : MonoBehaviour
             var r = BattleSimulator.RunBatch(spawns, aIConfig, 1);
             Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
         }
-        
+
     }
 }
