@@ -12,11 +12,11 @@ public class BattleReplayRunner : MonoBehaviour
     public string jsonlFilePath;                 // 支持绝对路径 or 相对路径
     public BattleScenarioConfig scenario;        // 可选：优先使用 scenario
     public List<SpawnEntry> spawns = new();      // 或直接用 spawns
-    public GameObject unitPrefab;
+    public UnitFactory UnitFactory;
 
     [Header("Playback")]
     public bool playOnStart = true;
-    public float speed = 1f;                     // 1 = 原速
+    public float speed = 1f;
     public bool paused = false;
 
     [Header("UI")]
@@ -77,29 +77,23 @@ public class BattleReplayRunner : MonoBehaviour
         }
     }
 
-    private void SpawnView(string id, Team team, Vector3 pos, float radius)
-    {
-        if (_views.ContainsKey(id)) return;
+        private void SpawnView(string id, Team team, Vector3 pos, float radius)
+        {
+            if (_views.ContainsKey(id)) return;
 
-        float diameter = radius > 0f ? radius * 2f : 0.5f;
+            if (UnitFactory == null)
+            {
+                Debug.LogError("[BattleReplayRunner] UnitFactory is null!");
+                return;
+            }
 
-        var go = Instantiate(unitPrefab);
-        go.name = $"ReplayUnit_{id}";
+            float diameter = radius > 0f ? radius * 2f : 0.5f;
 
-        var view = go.GetComponent<UnitView>();
-        if (view == null) view = go.AddComponent<UnitView>();
+            var view = UnitFactory.CreateU(id, team, pos);
+            view.transform.localScale = Vector3.one * diameter;
 
-        view.unitId = id;
-        view.team = team;
-        view.transform.localScale = Vector3.one * diameter;
-        view.SetPos(pos);
-
-        var renderer = go.GetComponent<Renderer>();
-        if (renderer != null)
-            renderer.material.color = (team == Team.A) ? Color.cyan : Color.magenta;
-
-        _views[id] = view;
-    }
+            _views[id] = view;
+        }
 
     private void LoadJsonl(string path)
     {

@@ -8,7 +8,8 @@ using UnityEngine;
 
 public class SandboxRunner : MonoBehaviour
 {
-    public GameObject unitPrefab;
+    // public GameObject unitPrefab;
+    public UnitFactory UnitFactory;   // 在 Inspector 里拖引用
     public AIConfig aIConfig;
     private BattleWorld _world = new();
     public BattleScenarioConfig scenario;
@@ -30,7 +31,9 @@ public class SandboxRunner : MonoBehaviour
     public string logDirectory = "./BattleLogs";  // 相对路径 or 绝对路径
     public bool logMove = false;
 
-
+    [Header("Board Anchors (Deploy)")]
+    public BoardAnchorGrid anchorGrid;   // 拖 BoardRing 上挂的 BoardAnchorGrid
+    public bool useAnchorGridForSpawn = true;
 
     void Start()
     {
@@ -96,7 +99,7 @@ public class SandboxRunner : MonoBehaviour
             int seed = aIConfig != null ? aIConfig.battleSeed : 0;
             string dir = logDirectory;
             if (!Path.IsPathRooted(dir)) dir = Path.Combine(Application.persistentDataPath, dir);
-            
+
             string path = Path.Combine(dir, $"battle_unity_seed{seed}.jsonl");
             Debug.Log($"[BattleLog] Writing to: {path}");
             _world.AddSink(new JsonlLogSink(path, seed, simDt, logMove));
@@ -116,34 +119,65 @@ public class SandboxRunner : MonoBehaviour
         {
             if (s == null || s.config == null) continue;
             string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";  // 生成唯一ID
-            var unit = CreateUnitFromConfig(id, s.config, s.team, s.startPos);
+            Vector3 startPos = s.startPos;
 
+            // ✅ 使用棋盘 anchor：按生成顺序填 Row/Col
+            if (useAnchorGridForSpawn && anchorGrid != null)
+            {
+                if (anchorGrid.Try2Build())
+                {
+                    int indexInTeam = (s.team == Team.A) ? (idxA - 1) : (idxB - 1);
+                    int row = indexInTeam / anchorGrid.cols;
+                    int col = indexInTeam % anchorGrid.cols;
+
+                    startPos = anchorGrid.GetDeployWorldPos(s.team, row, col);
+                }
+                else
+                {
+                    Debug.LogWarning("[SandboxRunner] AnchorGrid not ready, fallback to SpawnEntry.startPos");
+                }
+            }
+            var unit = CreateUnitFromConfig(id, s.config, s.team, startPos);
             _world.Add(unit);
             SpawnView(unit);
         }
     }
 
+    // private void SpawnView(Unit u)
+    // {
+    //     float diameter = u.Radius != 0.0f ? u.Radius * 2f : 0.5f;
+    //     var go = Instantiate(unitPrefab);
+    //     go.name = $"Unit_{u.Id}";
+    //     var view = go.GetComponent<UnitView>();
+
+    //     if (view == null) view = go.AddComponent<UnitView>();
+    //     view.unitId = u.Id;
+    //     view.team = u.Team;
+    //     view.transform.localScale = Vector3.one * diameter;
+    //     view.SetPos(u.Position);
+
+
+    //     // simple color
+    //     var renderer = go.GetComponent<Renderer>();
+    //     if (renderer != null)
+    //         renderer.material.color = u.Team == Team.A ? Color.cyan : Color.magenta;
+
+    //     _views[u.Id] = view;
+    // }
+
     private void SpawnView(Unit u)
     {
-        float diameter = u.Radius != 0.0f ? u.Radius * 2f : 0.5f;
-        var go = Instantiate(unitPrefab);
-        go.name = $"Unit_{u.Id}";
-        var view = go.GetComponent<UnitView>();
-
-        if (view == null) view = go.AddComponent<UnitView>();
-        view.unitId = u.Id;
-        view.team = u.Team;
-        view.transform.localScale = Vector3.one * diameter;
-        view.SetPos(u.Position);
-
-
-        // simple color
-        var renderer = go.GetComponent<Renderer>();
-        if (renderer != null)
-            renderer.material.color = u.Team == Team.A ? Color.cyan : Color.magenta;
+        if (UnitFactory == null)
+        {
+            Debug.LogError("[SandboxRunner] UnitFactory is null!");
+            return;
+        }
+        var view = UnitFactory.CreateU(u.Id, u.Team, u.Position);
+        // view.modelRoot.localScale = new Vector3(u.Radius,u.Radius,u.Radius);
 
         _views[u.Id] = view;
     }
+
 
     private void SyncCoreFromViews()
     {
@@ -191,7 +225,7 @@ public class SandboxRunner : MonoBehaviour
                 Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
             }
         }
-        if (GUI.Button(new Rect(Screen.width - w - pad, pad + 2*h + 16  , w, h), "Sim x1"))
+        if (GUI.Button(new Rect(Screen.width - w - pad, pad + 2 * h + 16, w, h), "Sim x1"))
         {
             var r = BattleSimulator.RunBatch(spawns, aIConfig, 1);
             Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
