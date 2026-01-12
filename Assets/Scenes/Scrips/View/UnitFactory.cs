@@ -5,27 +5,14 @@ using AutoChess.View;
 public class UnitFactory : MonoBehaviour
 {
     [Header("Shell (optional)")]
-    public GameObject unitShellPrefab;        // 里面挂 UnitView + ModelRoot（可为空）
+    public GameObject unitShellPrefab;
 
     [Header("Default Model")]
-    public GameObject cylinderModelPrefab;    // 圆柱占位模型（可为空）
+    public GameObject cylinderModelPrefab; // Recommended: assign in inspector.
 
-    public UnitView CreateU(string unitId, Team team, Vector3 spawnPos)
+    public UnitView CreateU(string unitId, Team team, Vector3 spawnPos, float radius)
     {
-        GameObject go;
-
-        if (unitShellPrefab != null)
-        {
-            go = Instantiate(unitShellPrefab);
-        }
-        else
-        {
-            // 动态创建壳
-            go = new GameObject("UnitShell");
-            var root = new GameObject("ModelRoot");
-            root.transform.SetParent(go.transform, false);
-        }
-
+        GameObject go = unitShellPrefab != null ? Instantiate(unitShellPrefab) : new GameObject("UnitShell");
         go.name = $"Unit_{unitId}";
 
         var view = go.GetComponent<UnitView>();
@@ -34,29 +21,29 @@ public class UnitFactory : MonoBehaviour
         view.unitId = unitId;
         view.team = team;
 
-        // 确保 modelRoot 存在
-        if (view.modelRoot == null)
-        {
-            var mr = go.transform.Find("ModelRoot");
-            view.modelRoot = (mr != null) ? mr : go.transform;
-        }
+        // IMPORTANT: apply radius BEFORE grounding the model (grounding uses final scale).
+        view.ApplyRadius(radius);
 
-        // 默认模型：圆柱
         if (cylinderModelPrefab != null)
         {
             view.SetModel(cylinderModelPrefab);
         }
         else
         {
+            // Fallback: primitive cylinder
             var cyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             cyl.name = "CylinderModel";
             cyl.transform.SetParent(view.modelRoot, false);
+            cyl.transform.localPosition = Vector3.zero;
+            cyl.transform.localRotation = Quaternion.identity;
+            cyl.transform.localScale = Vector3.one;
+
+            view.RegroundCurrentModel();
             view.CacheRenderers();
             view.ApplyTeamColor();
         }
 
         view.SetPos(spawnPos);
-
         return view;
     }
 }

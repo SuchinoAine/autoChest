@@ -172,7 +172,7 @@ public class SandboxRunner : MonoBehaviour
             Debug.LogError("[SandboxRunner] UnitFactory is null!");
             return;
         }
-        var view = UnitFactory.CreateU(u.Id, u.Team, u.Position);
+        var view = UnitFactory.CreateU(u.Id, u.Team, u.Position, u.Radius);
         // view.modelRoot.localScale = new Vector3(u.Radius,u.Radius,u.Radius);
 
         _views[u.Id] = view;

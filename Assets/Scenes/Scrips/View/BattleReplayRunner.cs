@@ -89,7 +89,7 @@ public class BattleReplayRunner : MonoBehaviour
 
             float diameter = radius > 0f ? radius * 2f : 0.5f;
 
-            var view = UnitFactory.CreateU(id, team, pos);
+            var view = UnitFactory.CreateU(id, team, pos, radius);
             view.transform.localScale = Vector3.one * diameter;
 
             _views[id] = view;
