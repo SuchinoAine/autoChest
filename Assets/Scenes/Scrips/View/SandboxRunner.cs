@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using AutoChess.Configs;
 using AutoChess.Core;
 using AutoChess.View;
@@ -24,10 +25,16 @@ public class SandboxRunner : MonoBehaviour
     private bool devPaused;
     private bool prevDevPaused = false;
 
+    [Header("Logging")]
+    public bool enableJsonLog = true;
+    public string logDirectory = "./BattleLogs";  // 相对路径 or 绝对路径
+    public bool logMove = false;
+
+
 
     void Start()
     {
-        Application.targetFrameRate = 120;
+        Application.targetFrameRate = 100;
         QualitySettings.vSyncCount = 0;
         InitWorld();
     }
@@ -83,6 +90,17 @@ public class SandboxRunner : MonoBehaviour
         _world.Sinks.Clear();
         _views.Clear();
         _world.AddSink(new BattleViewSink(_views));
+
+        if (enableJsonLog)
+        {
+            int seed = aIConfig != null ? aIConfig.battleSeed : 0;
+            string dir = logDirectory;
+            if (!Path.IsPathRooted(dir)) dir = Path.Combine(Application.persistentDataPath, dir);
+            
+            string path = Path.Combine(dir, $"battle_unity_seed{seed}.jsonl");
+            Debug.Log($"[BattleLog] Writing to: {path}");
+            _world.AddSink(new JsonlLogSink(path, seed, simDt, logMove));
+        }
 
         var useSpawns = (scenario != null) ? scenario.spawns : spawns;
 
@@ -180,4 +198,21 @@ public class SandboxRunner : MonoBehaviour
         }
 
     }
+
+    private void OnDisable()
+    {
+        _world.Shutdown();
+    }
+
+    private void OnDestroy()
+    {
+        _world.Shutdown();
+    }
+
+    private void OnApplicationQuit()
+    {
+        _world.Shutdown();
+    }
+
 }
+

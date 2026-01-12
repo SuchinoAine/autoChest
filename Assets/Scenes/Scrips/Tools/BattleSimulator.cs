@@ -28,6 +28,11 @@ public static class BattleSimulator
             var ai = Object.Instantiate(aiConfig);
             ai.battleSeed = aiConfig.battleSeed + i; // 每局不同，但可复现
             var world = BuildWorld(spawns, ai);
+            
+            // 记录日志
+            // string baseDir = @"D:\SimResults\2026-01-12\";
+            // string path = Path.Combine(baseDir, $"sim_seed{seed}_run{i}.jsonl");
+            // world.AddSink(new JsonlLogSink(path, seed, dt, logMove:false));
 
 
             float t = 0f;

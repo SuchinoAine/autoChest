@@ -83,6 +83,17 @@ namespace AutoChess.Core
             for (int i = 0; i < Sinks.Count; i++) Sinks[i].OnEnd(this, winner);
         }
 
+        public void Shutdown()
+        {
+            for (int i = 0; i < Sinks.Count; i++)
+            {
+                if (Sinks[i] is System.IDisposable d)
+                {
+                    try { d.Dispose(); } catch {}
+                }
+            }
+        }
+
         private void CheckEnd()
         {
             var aliveA = Units.Any(u => !u.IsDead && u.Team == Team.A);
@@ -92,8 +103,8 @@ namespace AutoChess.Core
             IsEnded = true;
             Winner = aliveA ? Team.A : Team.B;
 
-            // ✅ 不靠 log 扫描；结束事件直接发
             EmitEnd(Winner);
+            Shutdown();
         }
     }
 }
