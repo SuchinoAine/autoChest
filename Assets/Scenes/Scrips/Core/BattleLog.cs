@@ -1,5 +1,6 @@
 using UnityEngine;
 
+
 namespace AutoChess.Core
 {
     public enum LogType { Move, Attack, Death, End }

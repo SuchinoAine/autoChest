@@ -37,7 +37,7 @@ public class SandboxRunner : MonoBehaviour
 
     void Start()
     {
-        Application.targetFrameRate = 100;
+        Application.targetFrameRate = 60;
         QualitySettings.vSyncCount = 0;
         InitWorld();
     }
@@ -68,7 +68,9 @@ public class SandboxRunner : MonoBehaviour
         }
     }
 
-    private Unit CreateUnitFromConfig(string id, UnitConfig cfg, Team team, Vector3 startPos)
+    private Unit CreateUnitFromConfig(string id, UnitConfig cfg, Team team, Vector3 startPos,
+                                    SkillDefSO basicAttack,
+                                    SkillDefSO deaultskill)
     {
         return new Unit(
             id,
@@ -80,7 +82,9 @@ public class SandboxRunner : MonoBehaviour
             cfg.range,
             startPos,
             cfg.radius,
-            cfg.isranged
+            cfg.isranged,
+            basicAttack,
+            deaultskill
         );
     }
 
@@ -105,9 +109,8 @@ public class SandboxRunner : MonoBehaviour
             _world.AddSink(new JsonlLogSink(path, seed, simDt, logMove));
         }
 
-        var useSpawns = (scenario != null) ? scenario.spawns : spawns;
-
         // 空指针保护
+        var useSpawns = (scenario != null) ? scenario.spawns : spawns;
         if (useSpawns == null || useSpawns.Count == 0)
         {
             Debug.LogWarning("No spawns configured in SandboxRunner.");
@@ -118,10 +121,11 @@ public class SandboxRunner : MonoBehaviour
         foreach (var s in useSpawns)
         {
             if (s == null || s.config == null) continue;
-            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";  // 生成唯一ID
+            // 生成唯一ID
+            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";
             Vector3 startPos = s.startPos;
 
-            // ✅ 使用棋盘 anchor：按生成顺序填 Row/Col
+            // 使用棋盘 anchor：按生成顺序填 Row/Col
             if (useAnchorGridForSpawn && anchorGrid != null)
             {
                 if (anchorGrid.Try2Build())
@@ -137,33 +141,11 @@ public class SandboxRunner : MonoBehaviour
                     Debug.LogWarning("[SandboxRunner] AnchorGrid not ready, fallback to SpawnEntry.startPos");
                 }
             }
-            var unit = CreateUnitFromConfig(id, s.config, s.team, startPos);
+            var unit = CreateUnitFromConfig(id, s.config, s.team, startPos, s.basicAttack, s.defaultSkill);
             _world.Add(unit);
-            SpawnView(unit);
+            SpawnView(unit); 
         }
     }
-
-    // private void SpawnView(Unit u)
-    // {
-    //     float diameter = u.Radius != 0.0f ? u.Radius * 2f : 0.5f;
-    //     var go = Instantiate(unitPrefab);
-    //     go.name = $"Unit_{u.Id}";
-    //     var view = go.GetComponent<UnitView>();
-
-    //     if (view == null) view = go.AddComponent<UnitView>();
-    //     view.unitId = u.Id;
-    //     view.team = u.Team;
-    //     view.transform.localScale = Vector3.one * diameter;
-    //     view.SetPos(u.Position);
-
-
-    //     // simple color
-    //     var renderer = go.GetComponent<Renderer>();
-    //     if (renderer != null)
-    //         renderer.material.color = u.Team == Team.A ? Color.cyan : Color.magenta;
-
-    //     _views[u.Id] = view;
-    // }
 
     private void SpawnView(Unit u)
     {
@@ -178,7 +160,6 @@ public class SandboxRunner : MonoBehaviour
         _views[u.Id] = view;
     }
 
-
     private void SyncCoreFromViews()
     {
         // debug helper: sync core unit positions from views
@@ -188,7 +169,7 @@ public class SandboxRunner : MonoBehaviour
             {
                 var p3 = v.transform.position;
                 // 和 UnitView.SetPos
-                u.Position = new Vector3(p3.x, p3.y, p3.z);
+                u.Position = new Vector3(p3.x, 0, p3.z);
             }
         }
     }

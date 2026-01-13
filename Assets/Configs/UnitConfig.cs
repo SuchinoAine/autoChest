@@ -1,3 +1,4 @@
+using AutoChess.Configs;
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "AutoChess/UnitConfig")]
@@ -6,9 +7,11 @@ public class UnitConfig : ScriptableObject
     public string id;
     public float hp;
     public float atk;
-    public float atkInterval;  // seconds per attack
+    public float atkInterval;   // seconds per attack
     public float moveSpeed;
-    public float range;  // attack range
-    public float radius; // unit size
-    public bool isranged;  // is ranged unit
+    public float range;         // attack range
+    public float radius;        // unit size
+    public bool isranged;       // is ranged unit
+    public SkillDefSO basicAttack; // ✅ 基础攻击技能
+    public SkillDefSO defaultSkill; // ✅ 默认技能 可空
 }

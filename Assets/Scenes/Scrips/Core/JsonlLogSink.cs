@@ -3,6 +3,9 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using System.Collections.Generic;
+using AutoChess.Configs;
+
 
 namespace AutoChess.Core
 {
@@ -72,6 +75,24 @@ namespace AutoChess.Core
                 $"\"pos\":{{\"x\":0,\"y\":0,\"z\":0}}}}"
             );
             _w.Flush(); // 结束时强制刷盘
+        }
+
+        public void OnApplyBuff(Unit caster, Unit target, BuffDefSO buff, List<BuffDefSO> effects)
+        {
+            var p = target.Position;
+            _w.WriteLine(
+                $"{{\"kind\":\"event\",\"tick\":0,\"time\":0,\"type\":\"ApplyBuff\",\"a\":\"{E(caster.Id)}\",\"b\":\"{E(target.Id)}\",\"value\":0," +
+                $"\"pos\":{{\"x\":{F(p.x)},\"y\":{F(p.y)},\"z\":{F(p.z)}}}}}"
+            );
+        }
+
+        public void OnRemoveBuff(Unit target, BuffDefSO buff)
+        {
+            var p = target.Position;
+            _w.WriteLine(
+                $"{{\"kind\":\"event\",\"tick\":0,\"time\":0,\"type\":\"RemoveBuff\",\"a\":\"{E(target.Id)}\",\"b\":\"\",\"value\":0," +
+                $"\"pos\":{{\"x\":{F(p.x)},\"y\":{F(p.y)},\"z\":{F(p.z)}}}}}"
+            );
         }
 
         public void Dispose()

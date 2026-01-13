@@ -3,7 +3,6 @@ using UnityEngine;
 using AutoChess.Configs;
 
 
-
 [CreateAssetMenu(menuName = "AutoChess/Battle Scenario", fileName = "BattleScenario")]
 public class BattleScenarioConfig : ScriptableObject
 {

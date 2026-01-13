@@ -98,8 +98,9 @@ public static class BattleSimulator
                 cfg.range,
                 new Vector3(s.startPos.x, 0f, s.startPos.z),
                 cfg.radius,
-                cfg.isranged
-
+                cfg.isranged,
+                s.basicAttack,
+                s.defaultSkill
             );
             world.Add(unit);
         }

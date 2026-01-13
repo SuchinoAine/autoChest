@@ -1,7 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+
 
 namespace AutoChess.Core
 {
@@ -15,24 +15,33 @@ namespace AutoChess.Core
         public Team Winner { get; private set; }
         public AIConfig AiConfig { get; set; }
 
-        // ✅ 新增：Controller（行动逻辑）
+        // Controller（行动逻辑）
         public IBattleController BattleController { get; set; }
+        
+        // 系统组件：由 BattleWorld 统一调度
+        public readonly SystemBuff buffSystem = new();
+        public readonly SystemSkill skillSystem = new();
 
-        // ✅ 新增：事件 sinks（表现层/记录层都挂这）
+        // 事件 sinks（表现层/记录层都挂这）
         public readonly List<IBattleEventSink> Sinks = new();
         public void AddSink(IBattleEventSink s) { if (s != null) Sinks.Add(s); }
 
-        // focus 仍由 world 持有（因为 Tick 每帧清空一次是“调度策略”）
+        // focus：调度策略（每帧清空）
         private readonly Dictionary<string, int> _focusCount = new();
 
 
         public void Tick(float dt)
         {
             if (IsEnded) return;
+            // 1) 状态系统（可能会造成伤害/位移/增益等）
+            buffSystem.Update(this, dt);
+            // 2) 技能系统（释放技能 -> effect 结算）
+            skillSystem.Update(this, dt);
+            // 3) 时间推进
             Time += dt;
-            // cooldown
+            // 4) 普攻CD
             foreach (var u in Units) if (!u.IsDead) u.TickCooldown(dt);
-            // 集火索敌清空
+            // 5) 集火索敌清空
             _focusCount.Clear();
 
             int n = Units.Count;
@@ -52,7 +61,7 @@ namespace AutoChess.Core
             CheckEnd();
         }
 
-        // ===== focus 原语：让 controller 不直接碰字段 =====
+        // ===== focus 原语 =====
         internal void RegisterFocus(string targetId)
         {
             if (!_focusCount.ContainsKey(targetId)) _focusCount[targetId] = 0;
@@ -60,9 +69,21 @@ namespace AutoChess.Core
         }
         internal int GetFocusCount(string targetId)=> _focusCount.TryGetValue(targetId, out var c) ? c : 0;
 
+        // ===== 统一结算入口 =====
+        public void DealDamage(Unit source, Unit target, float amount)
+        {
+            if (target == null || target.IsDead) return;
+            if (amount <= 0f) return;
+            target.Hp -= amount;
+            // 复用现有事件：OnAttack 表示一次“造成伤害”
+            EmitAttack(source, target, amount);
+            if (target.IsDead)
+            {
+                EmitDeath(target, source);
+            }
+        }
 
-
-        // ===== Emit：事件出口（“事实”从这里发）=====
+        // ===== Emit：事件出口 =====
         internal void EmitMove(Unit u, Vector3 from, Vector3 to)
         {
             for (int i = 0; i < Sinks.Count; i++) Sinks[i].OnMove(this, u, from, to);

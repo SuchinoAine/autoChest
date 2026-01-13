@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using AutoChess.Core;
 using UnityEngine;
+using AutoChess.Configs;
 
 namespace AutoChess.View
 {
@@ -21,7 +22,7 @@ namespace AutoChess.View
 
         public void OnAttack(BattleWorld w, Unit attacker, Unit target, float damage)
         {
-            Debug.Log($"Unit {attacker.Id} attacked {target.Id} for {attacker.Atk} damage.");
+            Debug.Log($"VIEW-Unit {attacker.Id} attacked {target.Id} for {attacker.Atk} damage.");
             // nope for now
         }
 
@@ -41,6 +42,18 @@ namespace AutoChess.View
         public void OnEnd(BattleWorld w, Team winner)
         {
             Debug.Log($"Battle ended. Winner: {winner}");
+        }
+
+        public void OnApplyBuff(Unit target, Unit source, BuffDefSO buffId, List<BuffDefSO> stacks)
+        {
+            // buff 视效暂不实现
+            Debug.Log($"Buff {buffId.id} applied to Unit {target.Id} from Unit {source.Id}");
+        }
+
+        public void OnRemoveBuff(Unit target, BuffDefSO buffId)
+        {
+            // buff 移除视效暂不实现
+            Debug.Log($"Buff {buffId.id} removed from Unit {target.Id}");
         }
     }
 }

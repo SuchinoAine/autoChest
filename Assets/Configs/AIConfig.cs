@@ -20,5 +20,4 @@ public class AIConfig : ScriptableObject
     public float targetJitter = 0.02f; // 目标评分扰动幅度（建议 0~0.05）
     public int tickQuant = 5;          // jitter 每多少 tick 更新一次（防抖）
 
-
 }

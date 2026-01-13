@@ -1,8 +1,7 @@
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace AutoChess.Core
 
+namespace AutoChess.Core
 {
     public sealed class BattleController : IBattleController
     {
@@ -16,36 +15,28 @@ namespace AutoChess.Core
         private const float StrafeSepThreshold = 0.12f; // sep 超过这个才允许侧移（看起来像“被挤了才走位”）
         private const float DesiredRangeFactor = 0.95f; // 希望保持在 range*0.95 附近
         private const float RadialPullWeight = 0.25f;   // 拉回强度（很小）
-        // ✅ 新增：PBD 碰撞解算参数
-        private const int CollisionIters = 3;           // 2~4 都行
-        private const float DistEps = 1e-4f;
+        private const int CollisionIters = 3;           // PBD 碰撞解算参数 2-4
+        private const float DistEps = 1e-4f;            // PBD 碰撞wu
 
         public void StepUnit(BattleWorld world, Unit u, float dt)
         {
-            // 判死
             if (u.IsDead) return;
-            // 选目标
+
             var target = FindBestTargetByScore(world, u);
             if (target == null) return;
-            // register focus（原来在 Tick 里做）
+            // register focus
             world.RegisterFocus(target.Id);
 
             float dist = Vector3.Distance(target.Position, u.Position);
-            // in range -> attack
+            
             if (dist <= u.Range)
             {
-                // 即使站桩攻击，也要解重叠，否则会粘住
-                ResolveOverlap(world, u, dt);
+                // in range -> attack
+                ResolveOverlap(world, u, dt);   // 解重叠
                 if (u.CanAttack())
                 {
-                    target.Hp -= u.Atk;  // Functional attack logic moved here
-                    world.EmitAttack(u, target, u.Atk);
-                    u.ResetAttackCooldown();
-
-                    if (target.IsDead)
-                    {
-                        world.EmitDeath(target, u); // 死亡事件
-                    }
+                    if (world.skillSystem.CastBasicAttack(world, u, target))
+                        u.ResetAttackCooldown();
                 }
             }
             else
@@ -74,7 +65,6 @@ namespace AutoChess.Core
                         if (perp.sqrMagnitude > 0.0001f)
                         {
                             perp.Normalize();
-                            // 只有在确实挤时才侧移，避免两射手互锁定就一直漂
                             int side = SideSignFromRng(world, u, target);
                             float sepMag = sep.magnitude;
                             strafe = (sepMag > StrafeSepThreshold) ? (perp * (StrafeWeight * side)) : Vector3.zero;
@@ -101,27 +91,9 @@ namespace AutoChess.Core
                 Vector3 nextPos = u.Position + moveDir * u.MoveSpeed * dt;
                 nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
 
-                // ✅ 核心：硬碰撞（圆-圆不重叠）投影解算
+                // 硬碰撞（圆-圆不重叠）投影解算
                 ResolveCircleCollisions(world, u, ref nextPos);
-                // 只要本帧有“向目标推进”的趋势，就做“停在接触距离”，避免穿模粘住
-                //（对远程也安全：远程射程内 dirToTarget=0，forward≈0，不会触发）
-                // if (distToTarget > 0.0001f)
-                // {
-                //     Vector3 dirTo = toTarget / distToTarget;    // 指向目标的单位向量
-                //     float forward = Vector3.Dot(moveDir, dirTo);// moveDir 在追击方向上的分量
-                //     if (forward > 0.001f)
-                //     {
-                //         float minDist = u.Radius + target.Radius + ContactEpsilon;
-                //         float nextDist = Vector3.Distance(nextPos, target.Position);
-                //         if (nextDist < minDist)
-                //         {
-                //             nextPos = target.Position - dirTo * minDist;
-                //             nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
-                //         }
-                //     }
-                // }
                 u.Position = nextPos;
-                // u.Position = new Vector3(u.Position.x, 0f, u.Position.z);
                 if ((u.Position - oldPos).sqrMagnitude > 0.0001f)
                     world.EmitMove(u, oldPos, u.Position);
             }
@@ -220,9 +192,6 @@ namespace AutoChess.Core
         /// <summary>
         /// 评价目标分数
         /// </summary>
-        /// <param name="self">self</param>
-        /// <param name="target">target</param>
-        /// <returns></returns>
         private float ScoreTarget(BattleWorld world, Unit self, Unit target)
         {
             // 安全默认值

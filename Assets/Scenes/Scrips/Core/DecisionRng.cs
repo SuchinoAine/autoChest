@@ -1,5 +1,6 @@
 using System;
 
+
 namespace AutoChess.Core
 {
     public enum DecisionStream : ulong
