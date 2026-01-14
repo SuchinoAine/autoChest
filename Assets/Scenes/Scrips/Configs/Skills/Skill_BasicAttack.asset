@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19519b891ac471742bb280ca45e13325, type: 3}
   m_Name: Skill_BasicAttack
   m_EditorClassIdentifier: 
-  id: 
+  id: BasicAttack
   cooldown: 0
   range: 0
   effects:
-  - {fileID: 0}
+  - {fileID: 11400000, guid: b6b9ed92f2db2a84688aee7eb310cf02, type: 2}

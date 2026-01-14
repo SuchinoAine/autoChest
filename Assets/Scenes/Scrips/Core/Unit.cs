@@ -12,6 +12,7 @@ namespace AutoChess.Core
         public readonly string Id;
         public readonly Team Team;
         public float Hp;
+        public float MaxHp; 
         public float Atk;
         public float AtkInterval;   // seconds per attack
         public float MoveSpeed;     // units per second
@@ -26,6 +27,8 @@ namespace AutoChess.Core
         public SkillDefSO DefultSkill;
 
         private float _atkCooldown;
+        public float AtkCdLeft => _atkCooldown;
+        public float AtkCdNorm => AtkInterval > 0 ? Mathf.Clamp01(_atkCooldown / AtkInterval) : 0f;
 
         public bool IsDead => Hp <= 0;
 
@@ -33,7 +36,7 @@ namespace AutoChess.Core
                     float range, Vector3 startPos, float radius, bool isranged, 
                     SkillDefSO basicAttack, SkillDefSO defultSkill)
         {
-            Id = id; Team = team; Hp = hp; Atk = atk;
+            Id = id; Team = team; Hp = hp; MaxHp = hp; Atk = atk;
             AtkInterval = atkInterval; MoveSpeed = moveSpeed;
             Range = range;
             Position = startPos;

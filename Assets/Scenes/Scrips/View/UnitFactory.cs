@@ -10,6 +10,9 @@ public class UnitFactory : MonoBehaviour
     [Header("Default Model")]
     public GameObject cylinderModelPrefab; // Recommended: assign in inspector.
 
+    [Header("HUD")]
+    public GameObject unitHudPrefab; // UnitHud prefab
+
     public UnitView CreateU(string unitId, Team team, Vector3 spawnPos, float radius)
     {
         GameObject go = unitShellPrefab != null ? Instantiate(unitShellPrefab) : new GameObject("UnitShell");
@@ -23,6 +26,16 @@ public class UnitFactory : MonoBehaviour
 
         // IMPORTANT: apply radius BEFORE grounding the model (grounding uses final scale).
         view.ApplyRadius(radius);
+
+        // Spawn HUD under VisualRoot
+        if (unitHudPrefab != null)
+        {
+            var hudGo = Instantiate(unitHudPrefab, view.transform);
+            hudGo.name = "UnitHud";
+            hudGo.transform.localPosition = Vector3.zero;
+            hudGo.transform.localRotation = Quaternion.identity;
+            hudGo.transform.localScale = Vector3.one;
+        }
 
         if (cylinderModelPrefab != null)
         {

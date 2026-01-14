@@ -3,6 +3,7 @@ using System.IO;
 using AutoChess.Configs;
 using AutoChess.Core;
 using AutoChess.View;
+using AutoChess.View.Hud;
 using UnityEngine;
 
 
@@ -155,7 +156,8 @@ public class SandboxRunner : MonoBehaviour
             return;
         }
         var view = UnitFactory.CreateU(u.Id, u.Team, u.Position, u.Radius);
-        // view.modelRoot.localScale = new Vector3(u.Radius,u.Radius,u.Radius);
+        var hud = view.GetComponentInChildren<UnitHud>(true);
+        if (hud != null) hud.Bind(u);
 
         _views[u.Id] = view;
     }
