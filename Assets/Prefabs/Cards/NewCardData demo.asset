@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
+  m_Name: NewCardData demo
+  m_EditorClassIdentifier: 
+  unitId: dagou
+  unitName: "\u5927\u72D7\u56BC\u56BC\u56BC"
+  cost: 2
+  cardImage: {fileID: 21300000, guid: 12aefcec12e2b3c4fba89f7ca8a2b12d, type: 3}
+  borderImage: {fileID: 21300000, guid: 2ea7057c9abf3d846860b5052105afa2, type: 3}
+  bonds:
+  - bondName: ddd
+    bondIcon: {fileID: -613603233, guid: 1bdd0c7f5d1c1584ebe6e43cc0ac0dfd, type: 3}
+  prefab: {fileID: 0}
+  maxHp: 100
+  attackDamage: 10
+  attackRange: 1.5

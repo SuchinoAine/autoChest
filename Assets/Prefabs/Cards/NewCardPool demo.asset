@@ -1,0 +1,80 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33ce969ccd4e92242a39021ca968ba8b, type: 3}
+  m_Name: NewCardPool demo
+  m_EditorClassIdentifier: 
+  whiteCards: []
+  greenCards: []
+  blueCards: []
+  violetCards: []
+  goldCards: []
+  levelDropRates:
+  - tierRates:
+    - 100
+    - 0
+    - 0
+    - 0
+    - 0
+  - tierRates:
+    - 100
+    - 0
+    - 0
+    - 0
+    - 0
+  - tierRates:
+    - 75
+    - 25
+    - 0
+    - 0
+    - 0
+  - tierRates:
+    - 55
+    - 30
+    - 15
+    - 0
+    - 0
+  - tierRates:
+    - 45
+    - 33
+    - 20
+    - 2
+    - 0
+  - tierRates:
+    - 35
+    - 35
+    - 25
+    - 5
+    - 0
+  - tierRates:
+    - 22
+    - 35
+    - 30
+    - 12
+    - 1
+  - tierRates:
+    - 15
+    - 25
+    - 35
+    - 20
+    - 5
+  - tierRates:
+    - 10
+    - 15
+    - 30
+    - 30
+    - 15
+  - tierRates:
+    - 5
+    - 10
+    - 20
+    - 40
+    - 25

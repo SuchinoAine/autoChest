@@ -45,6 +45,12 @@ public class SandboxRunner : MonoBehaviour
 
     void Update()
     {
+        // ✅ 核心拦截：如果 GameManager 存在，且当前不是战斗阶段，就直接返回，不推进 Tick
+        if (AutoChess.Managers.GameManager.Instance != null && 
+            AutoChess.Managers.GameManager.Instance.CurrentPhase != AutoChess.Managers.GamePhase.Combat)
+        {
+            return;
+        }
         // 从暂停 -> 恢复的瞬间（可选回写）
         if (prevDevPaused && !devPaused)
         {
@@ -61,11 +67,21 @@ public class SandboxRunner : MonoBehaviour
         _accum += Time.deltaTime;
         _accum = Mathf.Min(_accum, dt * maxStepsPerFrame);
         int steps = 0;
+        
         while (_accum >= dt && steps < maxStepsPerFrame)
         {
             _world.Tick(dt);
             _accum -= dt;
             steps++;
+        }
+        
+        // ✅在 Tick 完之后检查战斗是否结束，如果结束则通知 GameManager 结算
+        if (_world.IsEnded)
+        {
+            if (AutoChess.Managers.GameManager.Instance != null)
+            {
+                AutoChess.Managers.GameManager.Instance.ReportCombatEnd(_world.Winner);
+            }
         }
     }
 
