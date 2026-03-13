@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
+  m_Name: violet_card 1
+  m_EditorClassIdentifier: 
+  unitId: v_1
+  unitName: "\u5343\u523A"
+  cost: 4
+  cardImage: {fileID: 0}
+  borderImage: {fileID: 21300000, guid: ec59aa44be9d9e544838fb688cd2ff50, type: 3}
+  bonds:
+  - bondName: "\u9510\u4F53"
+    bondIcon: {fileID: 0}
+  - bondName: "\u60AC\u4F53"
+    bondIcon: {fileID: 0}
+  - bondName: "\u5C04\u624B"
+    bondIcon: {fileID: 0}
+  prefab: {fileID: 6150649011139109527, guid: f6d4c6cd82508c244b72b3af77686030, type: 3}
+  maxHp: 1000
+  attackDamage: 160
+  attackRange: 5

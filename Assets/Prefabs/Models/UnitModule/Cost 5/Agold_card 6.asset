@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
+  m_Name: Agold_card 6
+  m_EditorClassIdentifier: 
+  unitId: a_6
+  unitName: "\u7EDD\u5BF9\u58C1"
+  cost: 5
+  cardImage: {fileID: 0}
+  borderImage: {fileID: 21300000, guid: 740993910d4f4404898e82d3491ca2ed, type: 3}
+  bonds:
+  - bondName: "\u575A\u4F53"
+    bondIcon: {fileID: 0}
+  - bondName: "\u60AC\u4F53"
+    bondIcon: {fileID: 0}
+  - bondName: "\u58C1\u5792"
+    bondIcon: {fileID: 0}
+  prefab: {fileID: 7040050776013425793, guid: f0fa0953a5d046449bab160b80d6caf4, type: 3}
+  maxHp: 2500
+  attackDamage: 150
+  attackRange: 1.5

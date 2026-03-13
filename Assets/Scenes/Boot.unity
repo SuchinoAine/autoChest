@@ -830,7 +830,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   RerollCost: 2
-  cardPoolConfig: {fileID: 0}
+  cardPoolConfig: {fileID: 11400000, guid: 7f0e9f0cd752cbc4ba0801bacff99ed4, type: 2}
 --- !u!1 &1892897417
 GameObject:
   m_ObjectHideFlags: 0
