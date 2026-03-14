@@ -78,40 +78,52 @@ namespace AutoChess.Configs
 
         private CardDataSO DrawRandomCardFromTier(int tier)
         {
-            List<CardDataSO> targetList = tier switch
-            {
-                1 => whiteCards,
-                2 => greenCards,
-                3 => blueCards,
-                4 => violetCards,
-                5 => goldCards,
-                _ => whiteCards
-            };
+            int clampedTier = Mathf.Clamp(tier, 1, 5);
 
-            // 2. 筛选出该品质中，当前库存大于 0 的卡牌
-            List<CardDataSO> availableCards = new List<CardDataSO>();
-            foreach (var card in targetList)
+            List<CardDataSO> GetTierList(int targetTier)
             {
-                if (card != null && _runtimePool.TryGetValue(card, out int count) && count > 0)
+                return targetTier switch
                 {
-                    availableCards.Add(card);
-                }
+                    1 => whiteCards,
+                    2 => greenCards,
+                    3 => blueCards,
+                    4 => violetCards,
+                    5 => goldCards,
+                    _ => whiteCards
+                };
             }
 
-            // 如果该品质的所有卡都被抽干了（极少见的情况）
-            if (availableCards.Count == 0)
+            // 从当前品质开始，向下逐级寻找有库存的卡。
+            for (int currentTier = clampedTier; currentTier >= 1; currentTier--)
             {
-                Debug.LogWarning($"[CardPoolSO] {tier} 费卡池已经被抽干了！该槽位将轮空。");
-                return null; 
+                List<CardDataSO> targetList = GetTierList(currentTier);
+                List<CardDataSO> availableCards = new List<CardDataSO>();
+
+                foreach (var card in targetList)
+                {
+                    if (card != null && _runtimePool.TryGetValue(card, out int count) && count > 0)
+                    {
+                        availableCards.Add(card);
+                    }
+                }
+
+                if (availableCards.Count == 0)
+                {
+                    continue;
+                }
+
+                if (currentTier != clampedTier)
+                {
+                    Debug.LogWarning($"[CardPoolSO] {clampedTier} 费卡池无库存，已回退到 {currentTier} 费抽卡。");
+                }
+
+                CardDataSO drawnCard = availableCards[Random.Range(0, availableCards.Count)];
+                _runtimePool[drawnCard]--;
+                return drawnCard;
             }
 
-            // 3. 在有库存的卡牌中随机抽取一张
-            CardDataSO drawnCard = availableCards[Random.Range(0, availableCards.Count)];
-            
-            // 4. 从公共卡池中扣除 1 张库存
-            _runtimePool[drawnCard]--;
-            
-            return drawnCard;
+            Debug.LogWarning($"[CardPoolSO] 从 {clampedTier} 费向下到 1 费均无库存，本次轮空。");
+            return null;
         }
 
         /// <summary>

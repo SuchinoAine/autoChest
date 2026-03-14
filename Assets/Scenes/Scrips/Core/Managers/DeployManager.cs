@@ -75,18 +75,26 @@ namespace AutoChess.Managers
         private void Drop()
         {
             // 出售判定
+            // 出售检测 (屏幕底部 5%)
             if (Input.mousePosition.y < Screen.height * 0.05f)
             {
-                int sellPrice = _draggingUnit.Data.cost * (int)Mathf.Pow(3, _draggingUnit.StarLevel - 1); 
+                // 1. 计算售价：1星=1倍，2星=3倍，3星=9倍
+                int starMultiplier = (int)Mathf.Pow(3, _draggingUnit.StarLevel - 1);
+                int sellPrice = _draggingUnit.Data.cost * starMultiplier; 
+                
+                // 给钱
                 EconomyManager.Instance.AddGold(sellPrice);
-                ShopManager.Instance.SellCardToPool(_draggingUnit.Data);
-
-                Debug.Log($"<color=orange>💰 叮！出售了 [{_draggingUnit.StarLevel}星 {_draggingUnit.Data.unitName}]，获得了 {sellPrice} 金币！</color>");
-
+                
+                // ✅ 2. 核心修复：根据星级回收对应数量的卡牌到公共卡池
+                // 1星回1张，2星回3张，3星回9张
+                for (int i = 0; i < starMultiplier; i++)
+                {
+                    ShopManager.Instance.SellCardToPool(_draggingUnit.Data);
+                }
+                Debug.Log($"<color=orange>💰 出售了 [{_draggingUnit.StarLevel}星 {_draggingUnit.Data.unitName}]，获得了 {sellPrice} 金币，回收了 {starMultiplier} 张卡牌。</color>");
                 Destroy(_draggingUnit.gameObject);
                 _draggingUnit = null;
 
-                // ✅ 卖掉棋子后，重新计算羁绊并刷新 UI
                 if (SynergyManager.Instance != null) SynergyManager.Instance.BroadcastSynergiesToUI();
                 return; 
             }

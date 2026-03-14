@@ -355,7 +355,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b305b88017b3bdc4e87f55049a33fb55, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  initialGold: 10
+  initialGold: 1000
   baseRoundIncome: 5
   maxInterest: 5
 --- !u!1 &255494206
@@ -524,7 +524,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 805, y: -333}
+  m_AnchoredPosition: {x: 801, y: -193.45}
   m_SizeDelta: {x: 400, y: 400}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1025635392
@@ -1236,7 +1236,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -425.1775, y: -210}
+  m_AnchoredPosition: {x: -480, y: -117.51}
   m_SizeDelta: {x: 307.4348, y: 328.9856}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1378051210
