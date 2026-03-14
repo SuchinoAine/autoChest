@@ -38,7 +38,7 @@ public class SandboxRunner : MonoBehaviour
 
     void Start()
     {
-        Application.targetFrameRate = 60;
+        Application.targetFrameRate = 120;
         QualitySettings.vSyncCount = 0;
         InitWorld();
     }

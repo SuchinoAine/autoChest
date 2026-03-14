@@ -8,9 +8,16 @@ namespace AutoChess.Managers
     {
         public static ShopManager Instance { get; private set; }
 
-        public int PlayerCoins { get; private set; } = 0;
-        public int PlayerLevel { get; private set; } = 1;
+        [Header("基础经济设定")]
         public int RerollCost = 2;
+        public int PlayerCoins { get; private set; } = 0;
+
+        [Header("经验与等级设定")]
+        public int MaxLevel = 9;
+        public int PlayerLevel { get; private set; } = 1;
+        public int PlayerExp { get; private set; } = 0;
+        [Tooltip("索引对应当前等级。例如填入: 0, 2, 2, 6, 10, 20, 36, 56, 80")]
+        public int[] expCurve = new int[] { 0, 2, 2, 6, 10, 20, 36, 56, 80 }; 
 
         [Header("卡池配置")]
         public CardPoolSO cardPoolConfig; 
@@ -23,11 +30,17 @@ namespace AutoChess.Managers
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
-            // ✅ 初始化公共卡池库存
+            // 初始化公共卡池库存
             if (cardPoolConfig != null)
             {
                 cardPoolConfig.InitializePool();
             }
+        }
+
+        private void Start()
+        {
+            // 游戏启动时广播一次初始等级，用于初始化 UI
+            BroadcastLevelExp();
         }
 
         private void OnEnable() => GameEventBus.OnEnterPreparationPhase += OnPreparationPhaseStarted;
@@ -35,9 +48,59 @@ namespace AutoChess.Managers
 
         private void OnPreparationPhaseStarted()
         {
-            AddCoins(80); // 每回合初始金币奖励
-            RefreshShop(free: true);
+            AddCoins(500); // 每回合基础收入
+            AddExp(2);   // 每回合自然增长经验
+            RefreshShop(free: true); // 每回合免费刷新
         }
+
+        // ================= 经验与升级系统 =================
+
+        public void RequestBuyExp()
+        {
+            if (GameManager.Instance.CurrentPhase != GamePhase.Preparation) return;
+
+            if (PlayerLevel >= MaxLevel)
+            {
+                Debug.LogWarning("[ShopManager] 已经是最高等级了！");
+                return;
+            }
+
+            if (PlayerCoins >= 4)
+            {
+                AddCoins(-4);
+                AddExp(4); // 花4块钱买4经验
+                Debug.Log("[ShopManager] 成功购买 4 点经验");
+            }
+            else
+            {
+                Debug.LogWarning("[ShopManager] 金币不足，无法购买经验");
+            }
+        }
+
+        private void AddExp(int amount)
+        {
+            if (PlayerLevel >= MaxLevel) return;
+
+            PlayerExp += amount;
+            
+            // 循环检测，防止一次性加太多经验连升两级
+            while (PlayerLevel < MaxLevel && PlayerExp >= expCurve[PlayerLevel])
+            {
+                PlayerExp -= expCurve[PlayerLevel];
+                PlayerLevel++;
+                Debug.Log($"[ShopManager] 升级啦！当前等级: {PlayerLevel}");
+            }
+
+            BroadcastLevelExp();
+        }
+
+        private void BroadcastLevelExp()
+        {
+            int nextExp = PlayerLevel < MaxLevel ? expCurve[PlayerLevel] : 0;
+            GameEventBus.OnLevelExpChanged?.Invoke(PlayerLevel, PlayerExp, nextExp);
+        }
+
+        // ================= 商店与购买系统 =================
 
         public void RequestReroll()
         {
@@ -91,7 +154,7 @@ namespace AutoChess.Managers
         {
             if (cardPoolConfig == null) return;
 
-            // ✅ 核心逻辑：刷新前，将当前商店里【未购买】的卡牌退回公共卡池
+            // 刷新前，将当前商店里【未购买】的卡牌退回公共卡池
             foreach (var card in _currentShopUnits)
             {
                 if (card != null)
@@ -101,7 +164,7 @@ namespace AutoChess.Managers
             }
             _currentShopUnits.Clear();
 
-            // 抽取 5 张新卡
+            // 根据当前玩家等级抽取 5 张新卡
             for (int i = 0; i < 5; i++)
             {
                 CardDataSO drawnCard = cardPoolConfig.RollCard(PlayerLevel);
@@ -116,17 +179,11 @@ namespace AutoChess.Managers
             PlayerCoins += amount;
             GameEventBus.OnCoinChanged?.Invoke(PlayerCoins);
         }
-
-        public void LevelUp()
-        {
-            PlayerLevel++;
-            Debug.Log($"[ShopManager] 玩家升到了 {PlayerLevel} 级！");
-        }
         
-        // 后续当你开发“出售棋子”功能时，可以直接调用这个方法将卖掉的棋子退回卡池
+        // 供后续出售棋子使用
         public void SellCardToPool(CardDataSO card)
         {
-            if (cardPoolConfig != null)
+            if (cardPoolConfig != null && card != null)
             {
                 cardPoolConfig.ReturnCard(card);
                 Debug.Log($"[ShopManager] {card.unitName} 被出售，已退回公共卡池。");

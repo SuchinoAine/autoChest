@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1368139253439573386}
   - component: {fileID: 8226073577220849629}
-  - component: {fileID: 5523704937536894141}
   - component: {fileID: 4646125042823496345}
+  - component: {fileID: 51571409738552637}
   m_Layer: 0
   m_Name: v_polo1
   m_TagString: Untagged
@@ -27,8 +27,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6150649011139109527}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 3.505, y: 0.391, z: -4.385}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_ConstrainProportionsScale: 1
   m_Children: []
@@ -41,40 +41,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6150649011139109527}
-  m_Mesh: {fileID: 0}
---- !u!114 &5523704937536894141
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6150649011139109527}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8510fef13244cfdaed2ea5c4114fabc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  polyhedronBaseForm: 4
-  operations:
-  - op: 0
-    amount: 3
-    spherize: 0
-    degree: 0
-  - op: 7
-    amount: 4.3
-    spherize: 0
-    degree: 0
-  - op: 7
-    amount: 4.3
-    spherize: 0
-    degree: 0
-  radius: 1
-  liveUpdate: 1
-  doubleSided: 0
-  randomizeVertexPositions: 0
-  height: 1
-  sides: 3
-  index: 0
+  m_Mesh: {fileID: 4300000, guid: 24d28652b0d8fdc46830170c55ce7597, type: 2}
 --- !u!23 &4646125042823496345
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -118,3 +85,25 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!64 &51571409738552637
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6150649011139109527}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 4300000, guid: 24d28652b0d8fdc46830170c55ce7597, type: 2}

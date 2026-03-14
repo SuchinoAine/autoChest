@@ -1,8 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
+using TMPro; // 引入 TextMeshPro
 using AutoChess.Configs;
 using AutoChess.View;
-using TMPro;
 
 namespace AutoChess.Managers
 {
@@ -10,16 +10,18 @@ namespace AutoChess.Managers
     {
         public static UIManager Instance { get; private set; }
 
-        [Header("UI 面板")] 
+        [Header("UI 面板文字 (全部使用 TextMeshPro)")]
         public GameObject shopPanel;
-        public GameObject dButton; // D牌按钮
-        public TextMeshProUGUI coinText; // 金币
+        public TextMeshProUGUI coinText; 
         public TextMeshProUGUI timerText;
+        public TextMeshProUGUI levelText; // 显示等级和经验
         
         [Header("动态商店卡池 (严格对应5个槽位)")]
+        [Tooltip("请按顺序将 Hierarchy 中的 container1 到 container5 拖入此数组")]
         public Transform[] cardContainers = new Transform[5]; 
         public GameObject cardPrefab;   
         
+        // 缓存生成的卡牌 UI (固定5个)
         private ShopCardUI[] _spawnedCards = new ShopCardUI[5];
 
         private void Awake()
@@ -35,6 +37,7 @@ namespace AutoChess.Managers
             GameEventBus.OnEnterCombatPhase += HideShop;
             GameEventBus.OnCoinChanged += UpdateCoinUI;
             GameEventBus.OnShopRefreshed += UpdateShopUI;
+            GameEventBus.OnLevelExpChanged += UpdateLevelUI; 
         }
 
         private void OnDisable()
@@ -43,6 +46,7 @@ namespace AutoChess.Managers
             GameEventBus.OnEnterCombatPhase -= HideShop;
             GameEventBus.OnCoinChanged -= UpdateCoinUI;
             GameEventBus.OnShopRefreshed -= UpdateShopUI;
+            GameEventBus.OnLevelExpChanged -= UpdateLevelUI;
         }
 
         private void Update()
@@ -52,32 +56,49 @@ namespace AutoChess.Managers
                 if (timerText != null) 
                     timerText.text = Mathf.CeilToInt(GameManager.Instance.PhaseTimer).ToString();
                     
+                // 快捷键支持
                 if (Input.GetKeyDown(KeyCode.D)) OnRerollButtonClicked();
+                if (Input.GetKeyDown(KeyCode.F)) OnBuyExpButtonClicked();
             }
         }
 
         private void ShowShop() => shopPanel.SetActive(true);
         private void HideShop() => shopPanel.SetActive(false);
+        
         private void UpdateCoinUI(int coins)
         {
             if (coinText != null) coinText.text = $"{coins}";
         }
 
-        // ✅ 核心逻辑：精准对位，有数据就显示，没数据就置空隐藏
+        private void UpdateLevelUI(int level, int exp, int nextExp)
+        {
+            if (levelText != null)
+            {
+                if (level >= ShopManager.Instance.MaxLevel)
+                {
+                    levelText.text = $"Lv {level} (MAX)";
+                }
+                else
+                {
+                    levelText.text = $"Lv {level}  [{exp}/{nextExp}]";
+                }
+            }
+        }
+
+        // 精准对位 5 个 Container
         private void UpdateShopUI(List<CardDataSO> shopUnits)
         {
             for (int i = 0; i < cardContainers.Length; i++)
             {
-                if (i >= shopUnits.Count) break;
+                if (i >= shopUnits.Count) break; // 防越界保护
 
-                // 1. 如果槽位里还没实例化卡牌，就实例化一个
+                // 1. 如果这个 Container 里还没生成过 Card 预制体，就生成一个
                 if (_spawnedCards[i] == null)
                 {
                     GameObject newCardObj = Instantiate(cardPrefab, cardContainers[i]);
-                    // 非常重要：重置位置和缩放，防止UI错乱
+                    // 确保生成的卡牌在 Container 中心且不变形
                     newCardObj.transform.localPosition = Vector3.zero; 
                     newCardObj.transform.localScale = Vector3.one; 
-                    
                     _spawnedCards[i] = newCardObj.GetComponent<ShopCardUI>();
                 }
 
@@ -85,23 +106,21 @@ namespace AutoChess.Managers
                 CardDataSO cardData = shopUnits[i];
                 if (cardData != null)
                 {
+                    // 有卡牌数据：激活卡牌节点，并注入数据
                     _spawnedCards[i].gameObject.SetActive(true);
                     _spawnedCards[i].Setup(cardData, i);
                 }
                 else
                 {
-                    // 数据为 null（被买走）：隐藏卡牌
+                    // 数据为 null（被买走或槽位轮空）：将卡牌节点隐藏
                     _spawnedCards[i].gameObject.SetActive(false); 
                 }
             }
         }
 
+        // 绑定给 UI 的按钮事件
         public void OnRerollButtonClicked() => ShopManager.Instance.RequestReroll();
-        public void ToggleShopPanel()
-        {
-            shopPanel?.SetActive(!shopPanel.activeSelf);
-            dButton?.SetActive(shopPanel.activeSelf);
-            
-        }
+        public void OnBuyExpButtonClicked() => ShopManager.Instance.RequestBuyExp();
+        public void ToggleShopPanel() => shopPanel?.SetActive(!shopPanel.activeSelf);
     }
 }

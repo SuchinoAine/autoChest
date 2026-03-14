@@ -18,11 +18,9 @@ MonoBehaviour:
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: a67e5f2226aa5db41bd9c8cf893a14ed, type: 3}
   bonds:
-  - bondName: "\u60AC\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u77E9\u9635"
-    bondIcon: {fileID: 0}
-  prefab: {fileID: 4250162275216698079, guid: 4271fcdd2d2bf8049a2dc7ca2148f033, type: 3}
+  - {fileID: 0}
+  - {fileID: 0}
+  prefab: {fileID: 4932769959213766549, guid: 4271fcdd2d2bf8049a2dc7ca2148f033, type: 3}
   maxHp: 400
   attackDamage: 55
   attackRange: 4

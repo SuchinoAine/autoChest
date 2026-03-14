@@ -7,6 +7,7 @@
 [Ll]ogs/
 [Uu]serSettings/
 [Pp]lugins/
+Assets/BakedMeshes/
 
 # IDE / Editor
 .vs/
@@ -25,3 +26,4 @@
 # OS
 .DS_Store
 Thumbs.db
+

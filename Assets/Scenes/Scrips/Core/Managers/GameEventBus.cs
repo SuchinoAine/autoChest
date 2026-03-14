@@ -13,8 +13,11 @@ namespace AutoChess.Managers
 
         // === 商店与经济事件 ===
         public static Action<int> OnCoinChanged;      // 金币数值变化
-        
         public static Action<List<CardDataSO>> OnShopRefreshed; 
         public static Action<CardDataSO> OnUnitPurchased; 
+
+        // === 等级与经验事件 ===
+        // 参数: 当前等级, 当前经验, 升下一级所需经验
+        public static Action<int, int, int> OnLevelExpChanged; 
     }
 }
