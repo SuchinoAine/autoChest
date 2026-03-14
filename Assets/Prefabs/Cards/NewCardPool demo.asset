@@ -12,11 +12,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33ce969ccd4e92242a39021ca968ba8b, type: 3}
   m_Name: NewCardPool demo
   m_EditorClassIdentifier: 
-  whiteCards: []
-  greenCards: []
-  blueCards: []
-  violetCards: []
-  goldCards: []
+  whiteCards:
+  - {fileID: 11400000, guid: a919cdd70cb33bf41a80c30244f66821, type: 2}
+  - {fileID: 11400000, guid: c5305239191144642a37f44217b64191, type: 2}
+  - {fileID: 11400000, guid: a218519a796acdc4ba714327aea10b2b, type: 2}
+  - {fileID: 11400000, guid: 6d3c25c8318e3194387c11c2e8162fd0, type: 2}
+  - {fileID: 11400000, guid: 6f6a599ef8afd38479d46471d25114d4, type: 2}
+  - {fileID: 11400000, guid: e7d7ce8ffc7e06745bfa05a3cdd7e970, type: 2}
+  - {fileID: 11400000, guid: d622b1bc751738b4aa2675267394498d, type: 2}
+  - {fileID: 11400000, guid: b3ba030b53b35154f86ad686d2c0faa9, type: 2}
+  greenCards:
+  - {fileID: 11400000, guid: 663449fa1879e0a41a57c8b30a1bb846, type: 2}
+  - {fileID: 11400000, guid: ce6ab733ca0d7ed43872ccc553e47549, type: 2}
+  - {fileID: 11400000, guid: 24c1522e3be366749a05a64f6172ebfe, type: 2}
+  - {fileID: 11400000, guid: 9618cbd3992ef7a4fb41c89454f79091, type: 2}
+  - {fileID: 11400000, guid: 824d482dc9f07cf46aaee97c4a726979, type: 2}
+  - {fileID: 11400000, guid: 72fb325482aea9e408073f45dc039a40, type: 2}
+  - {fileID: 11400000, guid: 8679ffd12c9a7ff4c922edee98b1a318, type: 2}
+  - {fileID: 11400000, guid: 886658ce7ef271c4494f6b144c5df267, type: 2}
+  blueCards:
+  - {fileID: 11400000, guid: 83853b19c9fac654fa5c95c958fe7954, type: 2}
+  - {fileID: 11400000, guid: bc6a1e1718a5eeb49b45c78cd2bff3e5, type: 2}
+  - {fileID: 11400000, guid: b6e2dc2d27f30914c8a7e7e80f6c40f4, type: 2}
+  - {fileID: 11400000, guid: 9f8cb5abb8be9ef4d9425f867e53c7b4, type: 2}
+  - {fileID: 11400000, guid: 0fb81fe77741789479aed38f7a1a4e36, type: 2}
+  - {fileID: 11400000, guid: af706721cfba7534195221ee7c88e178, type: 2}
+  - {fileID: 11400000, guid: 0cfaaf4eef070f948ae148816cabc1d9, type: 2}
+  - {fileID: 11400000, guid: 6e023fa4b73c98e4191fede620fddbd4, type: 2}
+  violetCards:
+  - {fileID: 11400000, guid: 558832a9a21c5b04882853d21efa3503, type: 2}
+  - {fileID: 11400000, guid: 76c60354786e12940ba02b2383b1b0c1, type: 2}
+  - {fileID: 11400000, guid: 2d71d45bc01f42245b1d6a864a6d885f, type: 2}
+  - {fileID: 11400000, guid: a84f884a040994c498f02469d3ebb913, type: 2}
+  - {fileID: 11400000, guid: 5a66c072a3b294845b4cf53aa2c0a59c, type: 2}
+  - {fileID: 11400000, guid: 4a27260933fdfa1488a93a7b313496eb, type: 2}
+  - {fileID: 11400000, guid: 2b81b93b82980544c86ddda67081f23d, type: 2}
+  goldCards:
+  - {fileID: 11400000, guid: e7b52a9bc1656be4b80519d3f2cc457c, type: 2}
+  - {fileID: 11400000, guid: f6a014e9cf32a654fb20f659fa6f8c76, type: 2}
+  - {fileID: 11400000, guid: 454341262be76f34dbb6770600fdaef6, type: 2}
+  - {fileID: 11400000, guid: c5684779273fbd741b272f7fe664a03c, type: 2}
+  - {fileID: 11400000, guid: 88f8cbf554838004e970217d02777f74, type: 2}
+  - {fileID: 11400000, guid: 229938f72c284da4a80db339f9d9768c, type: 2}
+  countCost1: 30
+  countCost2: 25
+  countCost3: 18
+  countCost4: 10
+  countCost5: 9
   levelDropRates:
   - tierRates:
     - 100

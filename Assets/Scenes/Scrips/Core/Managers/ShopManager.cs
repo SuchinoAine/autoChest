@@ -9,12 +9,11 @@ namespace AutoChess.Managers
         public static ShopManager Instance { get; private set; }
 
         public int PlayerCoins { get; private set; } = 0;
-        public int PlayerLevel { get; private set; } = 1; // ✅ 新增：玩家等级
+        public int PlayerLevel { get; private set; } = 1;
         public int RerollCost = 2;
 
         [Header("卡池配置")]
-        [Tooltip("拖入创建好的 Card Pool 数据资产")]
-        public CardPoolSO cardPoolConfig; // ✅ 替换掉原本的 flat List
+        public CardPoolSO cardPoolConfig; 
 
         private List<CardDataSO> _currentShopUnits = new();
 
@@ -23,6 +22,12 @@ namespace AutoChess.Managers
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
             DontDestroyOnLoad(gameObject);
+
+            // ✅ 初始化公共卡池库存
+            if (cardPoolConfig != null)
+            {
+                cardPoolConfig.InitializePool();
+            }
         }
 
         private void OnEnable() => GameEventBus.OnEnterPreparationPhase += OnPreparationPhaseStarted;
@@ -30,7 +35,7 @@ namespace AutoChess.Managers
 
         private void OnPreparationPhaseStarted()
         {
-            AddCoins(5);
+            AddCoins(80); // 每回合初始金币奖励
             RefreshShop(free: true);
         }
 
@@ -55,12 +60,21 @@ namespace AutoChess.Managers
             if (slotIndex < 0 || slotIndex >= _currentShopUnits.Count) return;
 
             CardDataSO unit = _currentShopUnits[slotIndex];
-            if (unit == null) return;
+            if (unit == null) return; 
+
+            // 检查备战区是否已满
+            if (BenchManager.Instance != null && BenchManager.Instance.IsBenchFull())
+            {
+                Debug.LogWarning("[ShopManager] 备战区已满！请先出售或上阵棋子。");
+                return;
+            }
 
             if (PlayerCoins >= unit.cost)
             {
                 AddCoins(-unit.cost);
-                _currentShopUnits[slotIndex] = null;
+                
+                // 挖空该槽位。注意：因为槽位变成了 null，所以在下次刷新时，这张卡不会被退回卡池！
+                _currentShopUnits[slotIndex] = null; 
                 
                 GameEventBus.OnShopRefreshed?.Invoke(_currentShopUnits);
                 GameEventBus.OnUnitPurchased?.Invoke(unit); 
@@ -75,17 +89,21 @@ namespace AutoChess.Managers
 
         private void RefreshShop(bool free)
         {
-            _currentShopUnits.Clear();
-            
-            if (cardPoolConfig == null)
-            {
-                Debug.LogError("[ShopManager] 未配置 CardPoolConfig！");
-                return;
-            }
+            if (cardPoolConfig == null) return;
 
+            // ✅ 核心逻辑：刷新前，将当前商店里【未购买】的卡牌退回公共卡池
+            foreach (var card in _currentShopUnits)
+            {
+                if (card != null)
+                {
+                    cardPoolConfig.ReturnCard(card);
+                }
+            }
+            _currentShopUnits.Clear();
+
+            // 抽取 5 张新卡
             for (int i = 0; i < 5; i++)
             {
-                // ✅ 核心修改：让卡池根据玩家当前等级去计算概率并刷卡
                 CardDataSO drawnCard = cardPoolConfig.RollCard(PlayerLevel);
                 _currentShopUnits.Add(drawnCard);
             }
@@ -99,11 +117,20 @@ namespace AutoChess.Managers
             GameEventBus.OnCoinChanged?.Invoke(PlayerCoins);
         }
 
-        // 可以提供一个升级接口供后续扩展
         public void LevelUp()
         {
             PlayerLevel++;
-            Debug.Log($"[ShopManager] 玩家升到了 {PlayerLevel} 级！商店刷新概率已改变。");
+            Debug.Log($"[ShopManager] 玩家升到了 {PlayerLevel} 级！");
+        }
+        
+        // 后续当你开发“出售棋子”功能时，可以直接调用这个方法将卖掉的棋子退回卡池
+        public void SellCardToPool(CardDataSO card)
+        {
+            if (cardPoolConfig != null)
+            {
+                cardPoolConfig.ReturnCard(card);
+                Debug.Log($"[ShopManager] {card.unitName} 被出售，已退回公共卡池。");
+            }
         }
     }
 }

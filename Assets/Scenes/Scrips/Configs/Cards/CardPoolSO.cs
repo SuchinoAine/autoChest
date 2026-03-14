@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace AutoChess.Configs
 {
-    // 定义不同等级下的卡牌刷新概率
     [System.Serializable]
     public class ShopDropRate
     {
@@ -14,52 +13,70 @@ namespace AutoChess.Configs
     [CreateAssetMenu(fileName = "NewCardPool", menuName = "AutoChess/Card Pool")]
     public class CardPoolSO : ScriptableObject
     {
-        [Header("各品质卡池分类")]
+        [Header("各品质卡池分类 (种类)")]
         public List<CardDataSO> whiteCards = new List<CardDataSO>();  // 1费
         public List<CardDataSO> greenCards = new List<CardDataSO>();  // 2费
         public List<CardDataSO> blueCards = new List<CardDataSO>();   // 3费
         public List<CardDataSO> violetCards = new List<CardDataSO>(); // 4费
         public List<CardDataSO> goldCards = new List<CardDataSO>();   // 5费
 
+        [Header("各品质单卡公共池数量 (张数)")]
+        public int countCost1 = 30;
+        public int countCost2 = 25;
+        public int countCost3 = 18;
+        public int countCost4 = 10;
+        public int countCost5 = 9;
+
         [Header("各等级刷新概率表")]
-        [Tooltip("列表索引对应玩家等级，例如元素0代表1级，元素1代表2级...")]
         public List<ShopDropRate> levelDropRates = new List<ShopDropRate>();
 
+        // 运行时缓存：记录每张卡牌当前在卡池中还剩余多少张
+        private Dictionary<CardDataSO, int> _runtimePool = new Dictionary<CardDataSO, int>();
+
         /// <summary>
-        /// 根据玩家当前等级，抽取一张卡牌
+        /// 游戏开始时调用，根据设定的张数初始化公共卡池
+        /// </summary>
+        public void InitializePool()
+        {
+            _runtimePool.Clear();
+            foreach (var card in whiteCards)  if (card != null) _runtimePool[card] = countCost1;
+            foreach (var card in greenCards)  if (card != null) _runtimePool[card] = countCost2;
+            foreach (var card in blueCards)   if (card != null) _runtimePool[card] = countCost3;
+            foreach (var card in violetCards) if (card != null) _runtimePool[card] = countCost4;
+            foreach (var card in goldCards)   if (card != null) _runtimePool[card] = countCost5;
+            
+            Debug.Log("[CardPoolSO] 公共卡池初始化完毕！");
+        }
+
+        /// <summary>
+        /// 抽取一张卡牌，并从库存中扣除
         /// </summary>
         public CardDataSO RollCard(int playerLevel)
         {
-            if (levelDropRates == null || levelDropRates.Count == 0)
-            {
-                Debug.LogError("[CardPoolSO] 刷新概率表未配置！");
-                return GetRandomCardFromTier(1); // 兜底返回1费卡
-            }
+            if (levelDropRates == null || levelDropRates.Count == 0) return null;
 
-            // 1. 获取当前等级的概率 (防越界保护)
             int levelIndex = Mathf.Clamp(playerLevel - 1, 0, levelDropRates.Count - 1);
             ShopDropRate rates = levelDropRates[levelIndex];
 
-            // 2. 掷骰子决定稀有度 (0~100)
+            // 1. 根据概率决定出什么品质的卡
             float roll = Random.Range(0f, 100f);
             float cumulative = 0f;
-            int rolledTier = 1; // 默认1费
+            int rolledTier = 1; 
 
             for (int i = 0; i < rates.tierRates.Length; i++)
             {
                 cumulative += rates.tierRates[i];
                 if (roll <= cumulative)
                 {
-                    rolledTier = i + 1; // 抽中的品质 (1到5)
+                    rolledTier = i + 1;
                     break;
                 }
             }
 
-            // 3. 从对应的品质池子里拿一张卡
-            return GetRandomCardFromTier(rolledTier);
+            return DrawRandomCardFromTier(rolledTier);
         }
 
-        private CardDataSO GetRandomCardFromTier(int tier)
+        private CardDataSO DrawRandomCardFromTier(int tier)
         {
             List<CardDataSO> targetList = tier switch
             {
@@ -71,14 +88,42 @@ namespace AutoChess.Configs
                 _ => whiteCards
             };
 
-            // 容错：如果你抽到了高费卡，但卡池里还没配置高费卡，自动降级给一张1费卡
-            if (targetList == null || targetList.Count == 0)
+            // 2. 筛选出该品质中，当前库存大于 0 的卡牌
+            List<CardDataSO> availableCards = new List<CardDataSO>();
+            foreach (var card in targetList)
             {
-                Debug.LogWarning($"[CardPoolSO] 尝试抽取 {tier} 费卡，但该卡池为空！");
-                return whiteCards.Count > 0 ? whiteCards[Random.Range(0, whiteCards.Count)] : null;
+                if (card != null && _runtimePool.TryGetValue(card, out int count) && count > 0)
+                {
+                    availableCards.Add(card);
+                }
             }
 
-            return targetList[Random.Range(0, targetList.Count)];
+            // 如果该品质的所有卡都被抽干了（极少见的情况）
+            if (availableCards.Count == 0)
+            {
+                Debug.LogWarning($"[CardPoolSO] {tier} 费卡池已经被抽干了！该槽位将轮空。");
+                return null; 
+            }
+
+            // 3. 在有库存的卡牌中随机抽取一张
+            CardDataSO drawnCard = availableCards[Random.Range(0, availableCards.Count)];
+            
+            // 4. 从公共卡池中扣除 1 张库存
+            _runtimePool[drawnCard]--;
+            
+            return drawnCard;
+        }
+
+        /// <summary>
+        /// 将卡牌退回公共卡池（用于商店刷新、玩家售卖棋子、玩家淘汰）
+        /// </summary>
+        public void ReturnCard(CardDataSO card)
+        {
+            if (card == null) return;
+            if (_runtimePool.ContainsKey(card))
+            {
+                _runtimePool[card]++;
+            }
         }
     }
 }
