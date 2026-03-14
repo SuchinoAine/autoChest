@@ -37,7 +37,7 @@ namespace AutoChess.Managers
 
         private void TryPickUp()
         {
-            // 如果鼠标当前悬停在 UI 元素上（比如按钮、卡牌），直接终止 防止点穿
+            // 如果鼠标当前悬停在 UI 元素上，直接终止 防止点穿
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             Ray ray = _mainCam.ScreenPointToRay(Input.mousePosition);
@@ -54,7 +54,6 @@ namespace AutoChess.Managers
                     {
                         _originalBoardRow = unit.BoardRow;
                         _originalBoardCol = unit.BoardCol;
-                        // 2. 抓起时，暂时将它的原槽位设为空
                         BoardManager.Instance.BoardUnits[_originalBoardRow, _originalBoardCol] = null;
                     }
                     else
@@ -81,7 +80,20 @@ namespace AutoChess.Managers
 
         private void Drop()
         {
-            // 获取两边的数据池
+            // 出售检测逻辑 (判断鼠标松开时，是否在屏幕底部的 5% 区域)
+            if (Input.mousePosition.y < Screen.height * 0.05f)
+            {
+                int sellPrice = _draggingUnit.Data.cost * (int)Mathf.Pow(3, _draggingUnit.StarLevel - 1); 
+                EconomyManager.Instance.AddGold(sellPrice);
+                ShopManager.Instance.SellCardToPool(_draggingUnit.Data);
+
+                Debug.Log($"<color=orange>💰 叮！出售了 [{_draggingUnit.StarLevel}星 {_draggingUnit.Data.unitName}]，获得了 {sellPrice} 金币！</color>");
+
+                Destroy(_draggingUnit.gameObject);
+                _draggingUnit = null;
+                return; 
+            }
+
             Transform[] benchAnchors = BenchManager.Instance.BenchAnchors;
             GameObject[] benchedUnits = BenchManager.Instance.BenchedUnits;
             Transform[,] boardAnchors = BoardManager.Instance.BoardAnchors;
@@ -91,13 +103,12 @@ namespace AutoChess.Managers
             float snapRadius = 2.0f;
             Vector3 visualCenter = _draggingUnit.transform.position - _draggingUnit.BaseOffset;
 
-            // 目标记录
             bool targetIsBoard = false;
             int bestBenchIdx = -1;
             int bestBoardRow = -1, bestBoardCol = -1;
             Transform targetAnchor = null;
 
-            // ✅ 1. 扫描备战区 (Bench) 寻找最近格子
+            // 1. 扫描备战区
             for (int i = 0; i < benchAnchors.Length; i++)
             {
                 float dist = Vector3.Distance(visualCenter, benchAnchors[i].position);
@@ -109,7 +120,7 @@ namespace AutoChess.Managers
                 }
             }
 
-            // ✅ 2. 扫描战斗棋盘 (Board) 寻找最近格子
+            // 2. 扫描战斗棋盘
             for (int r = 0; r < 4; r++)
             {
                 for (int c = 0; c < 7; c++)
@@ -128,59 +139,73 @@ namespace AutoChess.Managers
             // ✅ 3. 处理放置或换位逻辑
             if (targetAnchor != null)
             {
-                // 找到目标格子上的占位者
                 GameObject targetOccupant = targetIsBoard ? boardUnits[bestBoardRow, bestBoardCol] : benchedUnits[bestBenchIdx];
 
-                // 如果格子里有人，执行【互换】
-                if (targetOccupant != null && targetOccupant != _draggingUnit.gameObject)
+                // 🔥 新增：人口上限拦截！
+                // 条件：将【备战区】的棋子拖到【战斗棋盘】的【空位】上
+                if (targetIsBoard && !_originalIsOnBoard && targetOccupant == null)
                 {
-                    ChessUnit otherUnit = targetOccupant.GetComponent<ChessUnit>();
+                    // 统计当前棋盘上的己方总人数
+                    int currentPopulation = 0;
+                    foreach (var u in boardUnits) if (u != null) currentPopulation++;
 
-                    if (_originalIsOnBoard)
+                    // 判定是否超标
+                    if (currentPopulation >= ShopManager.Instance.PlayerLevel)
                     {
-                        boardUnits[_originalBoardRow, _originalBoardCol] = targetOccupant;
-                        otherUnit.IsOnBoard = true;
-                        otherUnit.BoardRow = _originalBoardRow;
-                        otherUnit.BoardCol = _originalBoardCol;
-                        targetOccupant.transform.SetParent(boardAnchors[_originalBoardRow, _originalBoardCol]);
+                        Debug.LogWarning($"<color=red>❌ 人口已满！当前等级 {ShopManager.Instance.PlayerLevel}，最多只能上阵 {ShopManager.Instance.PlayerLevel} 个棋子。</color>");
+                        // 巧妙之处：强行把目标格子设为 null，让它走到下一步的“退回原位”逻辑里！
+                        targetAnchor = null; 
+                    }
+                }
+
+                // 如果人口没满，或者是在进行互换，正常执行放入逻辑
+                if (targetAnchor != null)
+                {
+                    if (targetOccupant != null && targetOccupant != _draggingUnit.gameObject)
+                    {
+                        ChessUnit otherUnit = targetOccupant.GetComponent<ChessUnit>();
+
+                        if (_originalIsOnBoard)
+                        {
+                            boardUnits[_originalBoardRow, _originalBoardCol] = targetOccupant;
+                            otherUnit.IsOnBoard = true;
+                            otherUnit.BoardRow = _originalBoardRow;
+                            otherUnit.BoardCol = _originalBoardCol;
+                            targetOccupant.transform.SetParent(boardAnchors[_originalBoardRow, _originalBoardCol]);
+                        }
+                        else
+                        {
+                            benchedUnits[_originalBenchSlot] = targetOccupant;
+                            otherUnit.IsOnBoard = false;
+                            otherUnit.CurrentBenchSlot = _originalBenchSlot;
+                            targetOccupant.transform.SetParent(benchAnchors[_originalBenchSlot]);
+                        }
+                        targetOccupant.transform.localPosition = otherUnit.BaseOffset;
+                    }
+
+                    if (targetIsBoard)
+                    {
+                        boardUnits[bestBoardRow, bestBoardCol] = _draggingUnit.gameObject;
+                        _draggingUnit.IsOnBoard = true;
+                        _draggingUnit.BoardRow = bestBoardRow;
+                        _draggingUnit.BoardCol = bestBoardCol;
+
+                        var runner = FindFirstObjectByType<SandboxRunner>();
+                        if (runner != null) runner.AttachHud(_draggingUnit.gameObject, null);
                     }
                     else
                     {
-                        benchedUnits[_originalBenchSlot] = targetOccupant;
-                        otherUnit.IsOnBoard = false;
-                        otherUnit.CurrentBenchSlot = _originalBenchSlot;
-                        targetOccupant.transform.SetParent(benchAnchors[_originalBenchSlot]);
+                        benchedUnits[bestBenchIdx] = _draggingUnit.gameObject;
+                        _draggingUnit.IsOnBoard = false;
+                        _draggingUnit.CurrentBenchSlot = bestBenchIdx;
                     }
-                    // 对方棋子回位
-                    targetOccupant.transform.localPosition = otherUnit.BaseOffset;
+                    _draggingUnit.transform.SetParent(targetAnchor);
                 }
-
-                // 将被拖拽的棋子放入目标格子
-                if (targetIsBoard)
-                {
-                    boardUnits[bestBoardRow, bestBoardCol] = _draggingUnit.gameObject;
-                    _draggingUnit.IsOnBoard = true;
-                    _draggingUnit.BoardRow = bestBoardRow;
-                    _draggingUnit.BoardCol = bestBoardCol;
-
-                    // ✅ 新增：如果是上场，立即挂载或初始化血条
-                    var runner = FindFirstObjectByType<SandboxRunner>(); // 或者使用你的单例
-                    if (runner != null)
-                    {
-                        runner.AttachHud(_draggingUnit.gameObject, null);
-                    }
-                }
-                else
-                {
-                    benchedUnits[bestBenchIdx] = _draggingUnit.gameObject;
-                    _draggingUnit.IsOnBoard = false;
-                    _draggingUnit.CurrentBenchSlot = bestBenchIdx;
-                }
-                _draggingUnit.transform.SetParent(targetAnchor);
             }
-            else
+            
+            // 4. 野外退回 / 被人口限制弹回的逻辑统一处理
+            if (targetAnchor == null)
             {
-                // ✅ 4. 如果没有对准任何格子（扔在野外），退回原位
                 if (_originalIsOnBoard)
                 {
                     boardUnits[_originalBoardRow, _originalBoardCol] = _draggingUnit.gameObject;

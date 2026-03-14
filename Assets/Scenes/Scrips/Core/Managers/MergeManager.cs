@@ -73,13 +73,12 @@ namespace AutoChess.Managers
                 // 视觉强化 1：模型体积膨胀 1.2 倍
                 primary.transform.localScale *= 1.2f; 
                 
-                // 视觉强化 2：播放发光描边
-                var view = primary.GetComponent<View.UnitView>();
-                if (view != null) view.SetStarVisuals(primary.StarLevel);
+                // ✅ 视觉强化 2：直接让本体 ChessUnit 刷新发光特效！绝对不会 null！
+                primary.UpdateStarVisuals();
 
                 Debug.Log($"<color=yellow>✨合成！{cardData.unitName} 升到了 {primary.StarLevel} 星！</color>");
 
-                // 递归检查：万一这次合成正好凑齐了 3 个两星，就会引发“连环爆燃”直接合出三星！
+                // 递归检查
                 CheckForMerge(cardData, primary.StarLevel);
             }
         }
