@@ -12,15 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: white_card 3
   m_EditorClassIdentifier: 
-  unitId: w_3
   unitName: "\u5706\u7403"
   cost: 1
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: a67e5f2226aa5db41bd9c8cf893a14ed, type: 3}
+  prefab: {fileID: 12549380817259094, guid: f69c720bfac2bfd49ab1f1e59fe64f96, type: 3}
   bonds:
   - {fileID: 0}
   - {fileID: 0}
-  prefab: {fileID: 12549380817259094, guid: f69c720bfac2bfd49ab1f1e59fe64f96, type: 3}
-  maxHp: 400
-  attackDamage: 45
-  attackRange: 4
+  hp: 400
+  atk: 45
+  atkInterval: 1
+  moveSpeed: 2
+  range: 4
+  radius: 0.5
+  isranged: 0
+  basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
+  defaultSkill: {fileID: 0}

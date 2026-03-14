@@ -12,19 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: Agold_card 1
   m_EditorClassIdentifier: 
-  unitId: a_1
   unitName: "\u4E07\u534E"
   cost: 5
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: 740993910d4f4404898e82d3491ca2ed, type: 3}
-  bonds:
-  - bondName: "\u5706\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u9510\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u77E9\u9635"
-    bondIcon: {fileID: 0}
   prefab: {fileID: 5828625738475650420, guid: 3141d11199c699f45ad8fac181d51afe, type: 3}
-  maxHp: 1500
-  attackDamage: 250
-  attackRange: 5
+  bonds:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  hp: 0
+  atk: 0
+  atkInterval: 0
+  moveSpeed: 0
+  range: 0
+  radius: 0.26
+  isranged: 0
+  basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
+  defaultSkill: {fileID: 0}

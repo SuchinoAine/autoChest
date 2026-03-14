@@ -112,6 +112,8 @@ namespace AutoChess.Managers
                 chessUnit.CurrentBenchSlot = emptyIndex;
 
                 _benchedUnits[emptyIndex] = newUnit;
+                // 升级三星check
+                MergeManager.Instance.CheckForMerge(unitData, 1);
                 
                 Debug.Log($"[BenchManager] 成功在备战区 {emptyIndex} 号位生成了 {unitData.unitName}");
             }

@@ -1,64 +1,102 @@
-using System;
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 using AutoChess.Configs;
 
 namespace AutoChess.Core
 {
     public enum Team { A, B }
 
+    /// <summary>
+    /// 纯净的逻辑层单位类，不包含任何 Unity 表现层组件 (GameObject/Transform)
+    /// </summary>
     public class Unit
     {
-        public readonly string Id;
-        public readonly Team Team;
-        public float Hp;
-        public float MaxHp; 
-        public float Atk;
-        public float AtkInterval;   // seconds per attack
-        public float MoveSpeed;     // units per second
-        public float Range;         // attack range
-        public Vector3 Position;    // 3D position
-        public float Radius;        // unit size
-        public bool Isranged;       // is ranged unit
-        // Unit 挂载技能与状态（运行时）
-        public readonly List<SkillRuntime> Skills = new();
-        public readonly List<BuffInstance> Buffs = new(); // 当前身上的 buff 实例（用于UI/查询）
-        public SkillDefSO BasicAttack;
-        public SkillDefSO DefultSkill;
+        public string Id { get; private set; }
+        public Team Team { get; private set; }
+        
+        // === 基础生存属性 ===
+        public float MaxHp { get; private set; }
+        public float Hp { get; set; }
+        public bool IsDead => Hp <= 0f;
 
-        private float _atkCooldown;
-        public float AtkCdLeft => _atkCooldown;
-        public float AtkCdNorm => AtkInterval > 0 ? Mathf.Clamp01(_atkCooldown / AtkInterval) : 0f;
+        // === 战斗面板属性 === 
+        // 设为 get; set; 是为了完美配合 StatAddEffectSO 的直接加减
+        public float Atk { get; set; }
+        public float AtkInterval { get; set; }
+        public float MoveSpeed { get; set; }
+        public float Range { get; set; }
+        
+        // === 形态属性 ===
+        public float Radius { get; private set; }
+        // 注意：严格匹配 BattleController 中的 Isranged (小写r)
+        public bool Isranged { get; private set; } 
+        public Vector3 Position { get; set; }
 
-        public bool IsDead => Hp <= 0;
+        // === 技能系统 ===
+        // 注意：严格匹配 SystemSkill 中的 BasicAttack
+        public SkillDefSO BasicAttack { get; private set; } 
+        public SkillDefSO DefaultSkillDef { get; private set; }
+        
+        // 技能运行时列表 (供 SystemSkill 和 UnitHud 读取)
+        public List<SkillRuntime> Skills { get; private set; } = new List<SkillRuntime>();
 
-        public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, 
-                    float range, Vector3 startPos, float radius, bool isranged, 
-                    SkillDefSO basicAttack, SkillDefSO defultSkill)
+        // === Buff系统 ===
+        // 供 SystemBuff 读写和存储 Buff 实例
+        public List<BuffInstance> Buffs { get; private set; } = new List<BuffInstance>();
+
+        // === 冷却状态 ===
+        public float AtkCdLeft { get; set; }
+        
+        // 供 UnitHud 读取的普攻冷却归一化值 (0 = 完全就绪, 1 = 刚攻击完还在最大冷却中)
+        public float AtkCdNorm => AtkInterval > 0f ? (AtkCdLeft / AtkInterval) : 0f;
+
+        /// <summary>
+        /// 构造函数，签名与 SandboxRunner.CreateUnitFromConfig 严格对应
+        /// </summary>
+        public Unit(string id, Team team, float hp, float atk, float atkInterval, float moveSpeed, float range, Vector3 position, float radius, bool isranged, SkillDefSO basicAttack, SkillDefSO defaultSkill)
         {
-            Id = id; Team = team; Hp = hp; MaxHp = hp; Atk = atk;
-            AtkInterval = atkInterval; MoveSpeed = moveSpeed;
+            Id = id;
+            Team = team;
+            
+            MaxHp = hp;
+            Hp = hp;
+            
+            Atk = atk;
+            AtkInterval = atkInterval;
+            MoveSpeed = moveSpeed;
             Range = range;
-            Position = startPos;
-            _atkCooldown = 0f;
             Radius = radius;
             Isranged = isranged;
-            BasicAttack = basicAttack;
-            AddSkill(defultSkill);
-        }
+            Position = position;
 
-        public void AddSkill(SkillDefSO def)
-        {
-            if (def == null) return;
-            Skills.Add(new SkillRuntime(def));
+            BasicAttack = basicAttack;
+            DefaultSkillDef = defaultSkill;
+
+            // 初始化技能运行时列表 (HUD 默认读取 Skills[0])
+            if (defaultSkill != null)
+            {
+                Skills.Add(new SkillRuntime(defaultSkill));
+            }
         }
+        
+        /// <summary>
+        /// 核心层逻辑推进：由 BattleWorld.Tick() 驱动 (只处理普攻CD)
+        /// 注意：主动技能的 CD 扣减已经在 SystemSkill.Update 中处理了，这里不重复处理
+        /// </summary>
         public void TickCooldown(float dt)
         {
-            _atkCooldown = Math.Max(0f, _atkCooldown - dt);
+            if (IsDead) return;
+
+            // 1. 普攻 CD 扣减
+            if (AtkCdLeft > 0f)
+            {
+                AtkCdLeft -= dt;
+                if (AtkCdLeft < 0f) AtkCdLeft = 0f;
+            }
         }
 
-        public bool CanAttack() => _atkCooldown <= 0f;
-
-        public void ResetAttackCooldown() => _atkCooldown = AtkInterval;
+        // === 供 BattleController 调用的攻击状态判定 ===
+        public bool CanAttack() => AtkCdLeft <= 0f;
+        public void ResetAttackCooldown() => AtkCdLeft = AtkInterval;
     }
 }

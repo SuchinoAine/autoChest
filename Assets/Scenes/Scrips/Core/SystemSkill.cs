@@ -1,7 +1,6 @@
 using UnityEngine;
 using AutoChess.Configs;
 
-
 namespace AutoChess.Core
 {
     public class SystemSkill
@@ -102,4 +101,3 @@ namespace AutoChess.Core
         public void ResetCd() => CdLeft = Def.cooldown;
     }
 }
-

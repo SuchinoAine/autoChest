@@ -1,68 +1,89 @@
+using System;
+using System.Collections; // ✅ 新增：用于支持协程 IEnumerator
 using System.Collections.Generic;
-using System.IO;
 using AutoChess.Configs;
 using AutoChess.Core;
 using AutoChess.View;
 using AutoChess.View.Hud;
+using AutoChess.Managers;
 using UnityEngine;
 
+[Serializable]
+public class EnemySetup
+{
+    public int row; // 0-3
+    public int col; // 0-6
+    
+    [Header("模型与表现")]
+    public GameObject prefab;
+    public float radius = 0.5f;
+
+    [Header("战斗数值 (纯Unit)")]
+    public float hp = 1000f;
+    public float atk = 50f;
+    public float atkInterval = 1.2f;
+    public float moveSpeed = 3f;
+    public float range = 1.5f;
+    public bool isRanged = false;
+
+    [Header("技能")]
+    public SkillDefSO basicAttack;
+    public SkillDefSO defaultSkill;
+}
 
 public class SandboxRunner : MonoBehaviour
 {
-    // public GameObject unitPrefab;
-    public UnitFactory UnitFactory;   // 在 Inspector 里拖引用
     public AIConfig aIConfig;
     private BattleWorld _world = new();
-    public BattleScenarioConfig scenario;
-    public List<SpawnEntry> spawns = new();  // 生成用的单位列表
     private readonly Dictionary<string, UnitView> _views = new();
 
     [Header("Simulation")]
-    [SerializeField] private float simDt = 0.02f;       // 50 tick/s
-    [SerializeField] private int maxStepsPerFrame = 8;  // 防止卡顿时死循环追帧
+    [SerializeField] private float simDt = 0.02f;       
+    [SerializeField] private int maxStepsPerFrame = 8;  
     private float _accum;
 
-    // debug mode
-    [SerializeField] private bool showDevUI = true;
-    private bool devPaused;
-    private bool prevDevPaused = false;
+    [Header("敌方野怪配置 (Enemies)")]
+    public List<EnemySetup> enemySetups = new();
 
-    [Header("Logging")]
-    public bool enableJsonLog = true;
-    public string logDirectory = "./BattleLogs";  // 相对路径 or 绝对路径
-    public bool logMove = false;
+    [Header("HUD")]
+    public GameObject unitHudPrefab;
 
-    [Header("Board Anchors (Deploy)")]
-    public BoardAnchorGrid anchorGrid;   // 拖 BoardRing 上挂的 BoardAnchorGrid
-    public bool useAnchorGridForSpawn = true;
+    private bool _isEnding = false; // ✅ 新增：防止协程重复触发
 
     void Start()
     {
         Application.targetFrameRate = 120;
         QualitySettings.vSyncCount = 0;
-        InitWorld();
+    }
+
+    private void OnEnable() 
+    {
+        GameEventBus.OnEnterCombatPhase += InitWorld;
+        GameEventBus.OnEnterPreparationPhase += ResetBoard;
+    }
+
+    private void OnDisable() 
+    {
+        GameEventBus.OnEnterCombatPhase -= InitWorld;
+        GameEventBus.OnEnterPreparationPhase -= ResetBoard;
+        _world.Shutdown();
     }
 
     void Update()
     {
-        // ✅ 核心拦截：如果 GameManager 存在，且当前不是战斗阶段，就直接返回，不推进 Tick
-        if (AutoChess.Managers.GameManager.Instance != null && 
-            AutoChess.Managers.GameManager.Instance.CurrentPhase != AutoChess.Managers.GamePhase.Combat)
+        if (GameManager.Instance == null || GameManager.Instance.CurrentPhase != GamePhase.Combat) return;
+        
+        // ✅ 核心修改 1：拦截战斗结束瞬间，转交给协程处理
+        if (_world.IsEnded) 
         {
+            if (!_isEnding)
+            {
+                _isEnding = true;
+                StartCoroutine(HandleCombatEndCo());
+            }
             return;
         }
-        // 从暂停 -> 恢复的瞬间（可选回写）
-        if (prevDevPaused && !devPaused)
-        {
-            SyncCoreFromViews();
-            Debug.Log("SyncCoreFromViews called.");
-        }
-        prevDevPaused = devPaused;
-        // 开发者暂停：不 Tick，也不覆盖位置
-        if (devPaused) return;
-        if (_world.IsEnded) return;
 
-        // 累积真实帧间隔时间, 防止 Debug 暂停/切后台回来 accum 爆炸
         float dt = simDt;
         _accum += Time.deltaTime;
         _accum = Mathf.Min(_accum, dt * maxStepsPerFrame);
@@ -74,40 +95,42 @@ public class SandboxRunner : MonoBehaviour
             _accum -= dt;
             steps++;
         }
-        
-        // ✅在 Tick 完之后检查战斗是否结束，如果结束则通知 GameManager 结算
-        if (_world.IsEnded)
-        {
-            if (AutoChess.Managers.GameManager.Instance != null)
-            {
-                AutoChess.Managers.GameManager.Instance.ReportCombatEnd(_world.Winner);
-            }
-        }
     }
 
-    private Unit CreateUnitFromConfig(string id, UnitConfig cfg, Team team, Vector3 startPos,
-                                    SkillDefSO basicAttack,
-                                    SkillDefSO deaultskill)
+    // ✅ 核心修改 2：新增战斗结束协程
+    private IEnumerator HandleCombatEndCo()
     {
-        return new Unit(
-            id,
-            team,
-            cfg.hp,
-            cfg.atk,
-            cfg.atkInterval,
-            cfg.moveSpeed,
-            cfg.range,
-            startPos,
-            cfg.radius,
-            cfg.isranged,
-            basicAttack,
-            deaultskill
-        );
+        // 1. Debug 打印胜利方
+        Debug.Log($"[SandboxRunner] 战斗结束！胜利方是: {_world.Winner}");
+        
+        // 2. 暂停/缓冲 2 秒，让玩家看清结果
+        yield return new WaitForSeconds(2f);
+        
+        // 3. 释放锁，并正式通知 GameManager 结算（这会引发状态切换并调用 ResetBoard）
+        _isEnding = false;
+        GameManager.Instance.ReportCombatEnd(_world.Winner);
     }
+
+    private Unit CreateUnitFromCard(string id, CardDataSO card, Team team, Vector3 startPos, int starLevel)
+        {
+            if (card == null) return null;
+            
+            // ✅ 核心：星级数值膨胀系数！2星1.8倍，3星3.6倍（你可以按需调整）
+            float multi = 1f;
+            if (starLevel == 2) multi = 1.8f;
+            if (starLevel == 3) multi = 3.6f;
+
+            return new Unit(
+                id, team, 
+                card.hp * multi, card.atk * multi, card.atkInterval, card.moveSpeed, 
+                card.range, startPos, card.radius, card.isranged, 
+                card.basicAttack, card.defaultSkill
+            );
+        }
 
     private void InitWorld()
     {
-        // -- Init & Spawn --
+        Debug.Log("[SandboxRunner] 战斗开始！正在初始化战场...");
         _world = new BattleWorld();
         _world.AiConfig = aIConfig;
         _world.BattleController = new BattleController();
@@ -115,137 +138,179 @@ public class SandboxRunner : MonoBehaviour
         _views.Clear();
         _world.AddSink(new BattleViewSink(_views));
 
-        if (enableJsonLog)
-        {
-            int seed = aIConfig != null ? aIConfig.battleSeed : 0;
-            string dir = logDirectory;
-            if (!Path.IsPathRooted(dir)) dir = Path.Combine(Application.persistentDataPath, dir);
+        LoadPlayerUnits();
+        LoadEnemyUnits();
 
-            string path = Path.Combine(dir, $"battle_unity_seed{seed}.jsonl");
-            Debug.Log($"[BattleLog] Writing to: {path}");
-            _world.AddSink(new JsonlLogSink(path, seed, simDt, logMove));
+        if (_world.Units.Count == 0)
+        {
+            Debug.LogError("【警告】战场上没有任何单位！战斗直接结束。");
         }
+    }
 
-        // 空指针保护
-        var useSpawns = (scenario != null) ? scenario.spawns : spawns;
-        if (useSpawns == null || useSpawns.Count == 0)
-        {
-            Debug.LogWarning("No spawns configured in SandboxRunner.");
-            return;
-        }
-        // spawn units according to spawn list
-        int idxA = 0, idxB = 0;
-        foreach (var s in useSpawns)
-        {
-            if (s == null || s.config == null) continue;
-            // 生成唯一ID
-            string id = s.team == Team.A ? $"A{++idxA}" : $"B{++idxB}";
-            Vector3 startPos = s.startPos;
+    private void LoadPlayerUnits()
+    {
+        int idxA = 0;
+        var playerUnits = BoardManager.Instance.BoardUnits;
+        var playerAnchors = BoardManager.Instance.BoardAnchors;
 
-            // 使用棋盘 anchor：按生成顺序填 Row/Col
-            if (useAnchorGridForSpawn && anchorGrid != null)
+        for (int r = 0; r < 4; r++)
+        {
+            for (int c = 0; c < 7; c++)
             {
-                if (anchorGrid.Try2Build())
+                GameObject go = playerUnits[r, c];
+                if (go != null)
                 {
-                    int indexInTeam = (s.team == Team.A) ? (idxA - 1) : (idxB - 1);
-                    int row = indexInTeam / anchorGrid.cols;
-                    int col = indexInTeam % anchorGrid.cols;
+                    ChessUnit cu = go.GetComponent<ChessUnit>();
+                    if (cu != null && cu.Data != null)
+                    {
+                        Transform anchor = playerAnchors[r, c];
+                        if (anchor == null) continue;
 
-                    startPos = anchorGrid.GetDeployWorldPos(s.team, row, col);
+                        string id = $"A{++idxA}";
+                        var unit = CreateUnitFromCard(id, cu.Data, Team.A, anchor.position, cu.StarLevel);
+                        if (unit != null)
+                        {
+                            UnitView view = go.GetComponent<UnitView>();
+                            if (view == null) view = go.AddComponent<UnitView>();
+                            view.unitId = id;
+                            view.team = Team.A;
+                            
+                            _world.Add(unit);
+                            _views[id] = view;
+                            AttachHud(go, unit);
+                        }
+                    }
                 }
-                else
+            }
+        }
+    }
+
+    private void LoadEnemyUnits()
+    {
+        int idxB = 0;
+        var enemyAnchors = BoardManager.Instance.BoardAnchorsEne;
+        var enemyUnits = BoardManager.Instance.BoardUnitsEne;
+
+        foreach (var enemy in enemySetups)
+        {
+            if (enemy.prefab == null) continue;
+            if (enemy.row < 0 || enemy.row >= 4 || enemy.col < 0 || enemy.col >= 7) continue;
+
+            Transform anchor = enemyAnchors[enemy.row, enemy.col];
+            if (anchor == null)
+            {
+                Debug.LogError($"[SandboxRunner] 无法生成敌人！找不到敌方棋盘 第 {enemy.row} 行，第 {enemy.col} 列的格子。");
+                continue;
+            }
+
+            string id = $"B{++idxB}";
+            GameObject go = Instantiate(enemy.prefab, anchor);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.Euler(0, 180, 0);
+
+            MeshFilter mf = go.GetComponentInChildren<MeshFilter>();
+            if (mf != null && mf.sharedMesh != null)
+            {
+                float offsetY = -mf.sharedMesh.bounds.min.y * go.transform.localScale.y;
+                go.transform.localPosition = new Vector3(0, offsetY, 0);
+            }
+
+            UnitView view = go.GetComponent<UnitView>();
+            if (view == null) view = go.AddComponent<UnitView>();
+            view.unitId = id;
+            view.team = Team.B;
+
+            enemyUnits[enemy.row, enemy.col] = go;
+
+            var unit = new Unit(
+                id, Team.B, 
+                enemy.hp, enemy.atk, enemy.atkInterval, enemy.moveSpeed, 
+                enemy.range, anchor.position, enemy.radius, enemy.isRanged, 
+                enemy.basicAttack, enemy.defaultSkill
+            );
+
+            if (unit != null)
+            {
+                _world.Add(unit);
+                _views[id] = view;
+                AttachHud(go, unit);
+            }
+        }
+    }
+
+    public void AttachHud(GameObject go, Unit unit)
+    {
+        if (unitHudPrefab == null) return;
+
+        var hud = go.GetComponentInChildren<UnitHud>(true);
+        if (hud == null)
+        {
+            var hudGo = Instantiate(unitHudPrefab, go.transform);
+            hudGo.transform.localPosition = new Vector3(0, 1.5f, 0); 
+            hud = hudGo.GetComponent<UnitHud>();
+        }
+        
+        if (hud != null) 
+        {
+            hud.gameObject.SetActive(true); 
+            hud.Bind(unit); 
+        }
+    }
+
+    private void ResetBoard()
+    {
+        if (BoardManager.Instance == null) return;
+
+        // ✅ 核心修改 3：在归位前，把存活/死亡的逻辑 Unit 强行回满血，刷新CD
+        if (_world != null && _world.Units != null)
+        {
+            foreach (var u in _world.Units)
+            {
+                if (u.Team == Team.A)
                 {
-                    Debug.LogWarning("[SandboxRunner] AnchorGrid not ready, fallback to SpawnEntry.startPos");
+                    u.Hp = u.MaxHp;
+                    u.AtkCdLeft = 0f;
+                    foreach (var skill in u.Skills) skill.CdLeft = 0f;
                 }
             }
-            var unit = CreateUnitFromConfig(id, s.config, s.team, startPos, s.basicAttack, s.defaultSkill);
-            _world.Add(unit);
-            SpawnView(unit); 
         }
-    }
 
-    private void SpawnView(Unit u)
-    {
-        if (UnitFactory == null)
+        var enemyUnits = BoardManager.Instance.BoardUnitsEne;
+        for (int r = 0; r < 4; r++)
         {
-            Debug.LogError("[SandboxRunner] UnitFactory is null!");
-            return;
-        }
-        var view = UnitFactory.CreateU(u.Id, u.Team, u.Position, u.Radius);
-        var hud = view.GetComponentInChildren<UnitHud>(true);
-        if (hud != null) hud.Bind(u);
-
-        _views[u.Id] = view;
-    }
-
-    private void SyncCoreFromViews()
-    {
-        // debug helper: sync core unit positions from views
-        foreach (var u in _world.Units)
-        {
-            if (_views.TryGetValue(u.Id, out var v))
+            for (int c = 0; c < 7; c++)
             {
-                var p3 = v.transform.position;
-                // 和 UnitView.SetPos
-                u.Position = new Vector3(p3.x, 0, p3.z);
+                if (enemyUnits[r, c] != null)
+                {
+                    Destroy(enemyUnits[r, c]);
+                    enemyUnits[r, c] = null;
+                }
+            }
+        }
+
+        var playerUnits = BoardManager.Instance.BoardUnits;
+        for (int r = 0; r < 4; r++)
+        {
+            for (int c = 0; c < 7; c++)
+            {
+                GameObject go = playerUnits[r, c];
+                if (go != null)
+                {
+                    ChessUnit cu = go.GetComponent<ChessUnit>();
+                    if (cu != null)
+                    {
+                        go.transform.localPosition = cu.BaseOffset;
+                        go.transform.localRotation = cu.Data.prefab.transform.localRotation;
+                        
+                        if (!go.activeSelf) go.SetActive(true);
+                        go.transform.localScale = cu.Data.prefab.transform.localScale;
+
+                        // ✅ 强行唤醒可能被隐藏的血条
+                        var hud = go.GetComponentInChildren<UnitHud>(true);
+                        if (hud != null) hud.gameObject.SetActive(true);
+                    }
+                }
             }
         }
     }
-
-    private void ToggleDevPause()
-    {
-        devPaused = !devPaused;
-        Time.timeScale = devPaused ? 0f : 1f;
-    }
-
-    private void OnGUI()
-    {
-        if (!showDevUI) return;
-
-        const int w = 140, h = 40, pad = 12;
-        var rect = new Rect(Screen.width - w - pad, pad, w, h);
-
-        var label = devPaused ? "Resume (Dev)" : "Pause (Dev)";
-        if (GUI.Button(rect, label)) ToggleDevPause();
-
-        if (scenario == null)
-        {
-            if (GUI.Button(new Rect(Screen.width - w - pad, pad + h + 8, w, h), "Sim x100"))
-            {
-                var r = BattleSimulator.RunBatch(spawns, aIConfig, 100);
-                Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
-            }
-        }
-        else
-        {
-            if (GUI.Button(new Rect(Screen.width - w - pad, pad + h + 8, w, h), "Sim x100"))
-            {
-                var r = BattleSimulator.RunBatchByScenario(scenario, 100);
-                Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
-            }
-        }
-        if (GUI.Button(new Rect(Screen.width - w - pad, pad + 2 * h + 16, w, h), "Sim x1"))
-        {
-            var r = BattleSimulator.RunBatch(spawns, aIConfig, 1);
-            Debug.Log($"[Sim] A wins={r.aWins}, B wins={r.bWins}, avgTime={r.avgDuration:F2}s");
-        }
-
-    }
-
-    private void OnDisable()
-    {
-        _world.Shutdown();
-    }
-
-    private void OnDestroy()
-    {
-        _world.Shutdown();
-    }
-
-    private void OnApplicationQuit()
-    {
-        _world.Shutdown();
-    }
-
 }
-

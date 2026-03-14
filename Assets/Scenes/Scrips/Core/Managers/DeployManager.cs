@@ -10,7 +10,7 @@ namespace AutoChess.Managers
 
         private Camera _mainCam;
         private ChessUnit _draggingUnit;
-        private Plane _dragPlane; 
+        private Plane _dragPlane;
 
         // 记录抓起前的原位置，方便退回或换位
         private bool _originalIsOnBoard;
@@ -21,7 +21,7 @@ namespace AutoChess.Managers
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            
+
             _mainCam = Camera.main;
             _dragPlane = new Plane(Vector3.up, new Vector3(0, 1.0f, 0));
         }
@@ -73,7 +73,7 @@ namespace AutoChess.Managers
             {
                 Vector3 targetPos = ray.GetPoint(enter);
                 Vector3 targetPivotPos = targetPos + _draggingUnit.BaseOffset;
-                
+
                 _draggingUnit.transform.position = Vector3.Lerp(
                     _draggingUnit.transform.position, targetPivotPos, Time.deltaTime * 20f);
             }
@@ -88,7 +88,7 @@ namespace AutoChess.Managers
             GameObject[,] boardUnits = BoardManager.Instance.BoardUnits;
 
             float minDistance = float.MaxValue;
-            float snapRadius = 2.0f; 
+            float snapRadius = 2.0f;
             Vector3 visualCenter = _draggingUnit.transform.position - _draggingUnit.BaseOffset;
 
             // 目标记录
@@ -98,7 +98,7 @@ namespace AutoChess.Managers
             Transform targetAnchor = null;
 
             // ✅ 1. 扫描备战区 (Bench) 寻找最近格子
-            for (int i = 0; i < benchAnchors.Length; i++) 
+            for (int i = 0; i < benchAnchors.Length; i++)
             {
                 float dist = Vector3.Distance(visualCenter, benchAnchors[i].position);
                 if (dist < minDistance && dist < snapRadius)
@@ -110,9 +110,9 @@ namespace AutoChess.Managers
             }
 
             // ✅ 2. 扫描战斗棋盘 (Board) 寻找最近格子
-            for (int r = 0; r < 4; r++) 
+            for (int r = 0; r < 4; r++)
             {
-                for (int c = 0; c < 7; c++) 
+                for (int c = 0; c < 7; c++)
                 {
                     if (boardAnchors[r, c] == null) continue;
                     float dist = Vector3.Distance(visualCenter, boardAnchors[r, c].position);
@@ -135,7 +135,7 @@ namespace AutoChess.Managers
                 if (targetOccupant != null && targetOccupant != _draggingUnit.gameObject)
                 {
                     ChessUnit otherUnit = targetOccupant.GetComponent<ChessUnit>();
-                    
+
                     if (_originalIsOnBoard)
                     {
                         boardUnits[_originalBoardRow, _originalBoardCol] = targetOccupant;
@@ -152,7 +152,7 @@ namespace AutoChess.Managers
                         targetOccupant.transform.SetParent(benchAnchors[_originalBenchSlot]);
                     }
                     // 对方棋子回位
-                    targetOccupant.transform.localPosition = otherUnit.BaseOffset; 
+                    targetOccupant.transform.localPosition = otherUnit.BaseOffset;
                 }
 
                 // 将被拖拽的棋子放入目标格子
@@ -162,6 +162,13 @@ namespace AutoChess.Managers
                     _draggingUnit.IsOnBoard = true;
                     _draggingUnit.BoardRow = bestBoardRow;
                     _draggingUnit.BoardCol = bestBoardCol;
+
+                    // ✅ 新增：如果是上场，立即挂载或初始化血条
+                    var runner = FindFirstObjectByType<SandboxRunner>(); // 或者使用你的单例
+                    if (runner != null)
+                    {
+                        runner.AttachHud(_draggingUnit.gameObject, null);
+                    }
                 }
                 else
                 {

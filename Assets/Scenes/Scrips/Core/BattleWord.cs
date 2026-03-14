@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-
 namespace AutoChess.Core
 {
     public class BattleWorld
@@ -15,39 +14,31 @@ namespace AutoChess.Core
         public Team Winner { get; private set; }
         public AIConfig AiConfig { get; set; }
 
-        // Controller（行动逻辑）
         public IBattleController BattleController { get; set; }
-        
-        // 系统组件：由 BattleWorld 统一调度
         public readonly SystemBuff buffSystem = new();
         public readonly SystemSkill skillSystem = new();
-
-        // 事件 sinks（表现层/记录层都挂这）
         public readonly List<IBattleEventSink> Sinks = new();
+        
         public void AddSink(IBattleEventSink s) { if (s != null) Sinks.Add(s); }
-
-        // focus：调度策略（每帧清空）
         private readonly Dictionary<string, int> _focusCount = new();
-
 
         public void Tick(float dt)
         {
             if (IsEnded) return;
-            // 1) 状态系统（可能会造成伤害/位移/增益等）
             buffSystem.Update(this, dt);
-            // 2) 技能系统（释放技能 -> effect 结算）
             skillSystem.Update(this, dt);
-            // 3) 时间推进
             Time += dt;
-            // 4) 普攻CD
-            foreach (var u in Units) if (!u.IsDead) u.TickCooldown(dt);
-            // 5) 集火索敌清空
+            
+            foreach (var u in Units) 
+            {
+                if (!u.IsDead) u.TickCooldown(dt);
+            }
+            
             _focusCount.Clear();
 
             int n = Units.Count;
             if (n == 0) return;
 
-            // 每帧换一个起点：让'谁先行动'在长期统计上均匀
             int start = TickIndex % n;
             for (int k = 0; k < n; k++)
             {
@@ -56,34 +47,92 @@ namespace AutoChess.Core
                 BattleController.StepUnit(this, u, dt);
             }
 
-            // tick index++
+            // ✅ 核心升级：全局 PBD 碰撞约束！
+            ResolveGlobalCollisions();
+
             TickIndex++;
             CheckEnd();
         }
 
-        // ===== focus 原语 =====
+        private void ResolveGlobalCollisions()
+        {
+            int iters = 3; // PBD 迭代次数，3次已经足够稳定
+            float contactEps = 0.02f;
+
+            for (int iter = 0; iter < iters; iter++)
+            {
+                for (int i = 0; i < Units.Count; i++)
+                {
+                    var u1 = Units[i];
+                    if (u1.IsDead) continue;
+
+                    for (int j = i + 1; j < Units.Count; j++)
+                    {
+                        var u2 = Units[j];
+                        if (u2.IsDead) continue;
+
+                        Vector3 d = u1.Position - u2.Position;
+                        d.y = 0f;
+                        float distSq = d.sqrMagnitude;
+                        
+                        // ✅ 防呆保护：如果你在 CardDataSO 里忘了填 Radius，默认给 0.5
+                        float r1 = u1.Radius > 0.1f ? u1.Radius : 0.5f;
+                        float r2 = u2.Radius > 0.1f ? u2.Radius : 0.5f;
+
+                        float minDist = r1 + r2 + contactEps;
+
+                        if (distSq < minDist * minDist)
+                        {
+                            float dist = Mathf.Sqrt(distSq);
+                            Vector3 n;
+                            if (dist < 0.001f) // 两个棋子完全重叠时的极端处理
+                            {
+                                n = new Vector3(UnityEngine.Random.Range(-1f, 1f), 0, UnityEngine.Random.Range(-1f, 1f)).normalized;
+                                if (n == Vector3.zero) n = Vector3.right;
+                            }
+                            else
+                            {
+                                n = d / dist;
+                            }
+
+                            float overlap = minDist - dist;
+                            
+                            // 互相挤压：各承担 50% 的推力
+                            Vector3 corr = n * (overlap * 0.5f);
+                            u1.Position += corr;
+                            u2.Position -= corr;
+                        }
+                    }
+                }
+            }
+
+            // 碰撞解算完后，统一通知表现层更新位置
+            foreach (var u in Units)
+            {
+                if (!u.IsDead)
+                {
+                    EmitMove(u, u.Position, u.Position);
+                }
+            }
+        }
+
         internal void RegisterFocus(string targetId)
         {
             if (!_focusCount.ContainsKey(targetId)) _focusCount[targetId] = 0;
             _focusCount[targetId]++;
         }
+        
         internal int GetFocusCount(string targetId)=> _focusCount.TryGetValue(targetId, out var c) ? c : 0;
 
-        // ===== 统一结算入口 =====
         public void DealDamage(Unit source, Unit target, float amount)
         {
             if (target == null || target.IsDead) return;
             if (amount <= 0f) return;
             target.Hp -= amount;
-            // 复用现有事件：OnAttack 表示一次“造成伤害”
             EmitAttack(source, target, amount);
-            if (target.IsDead)
-            {
-                EmitDeath(target, source);
-            }
+            if (target.IsDead) EmitDeath(target, source);
         }
 
-        // ===== Emit：事件出口 =====
         internal void EmitMove(Unit u, Vector3 from, Vector3 to)
         {
             for (int i = 0; i < Sinks.Count; i++) Sinks[i].OnMove(this, u, from, to);
@@ -108,10 +157,7 @@ namespace AutoChess.Core
         {
             for (int i = 0; i < Sinks.Count; i++)
             {
-                if (Sinks[i] is System.IDisposable d)
-                {
-                    try { d.Dispose(); } catch {}
-                }
+                if (Sinks[i] is System.IDisposable d) { try { d.Dispose(); } catch {} }
             }
         }
 

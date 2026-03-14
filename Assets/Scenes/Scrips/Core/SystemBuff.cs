@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using AutoChess.Configs;
 
-
 namespace AutoChess.Core
 {
     public class SystemBuff
@@ -96,5 +95,4 @@ namespace AutoChess.Core
         public float NextTickTime;
         public int Stacks;
     }
-
 }

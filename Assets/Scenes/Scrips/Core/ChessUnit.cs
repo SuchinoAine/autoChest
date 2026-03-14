@@ -6,8 +6,9 @@ namespace AutoChess.Core
     // 挂载在每个实例化的 3D 棋子模型上，作为它的身份标识
     public class ChessUnit : MonoBehaviour
     {
+        public int StarLevel = 1;        // 星级
         public CardDataSO Data;          
-        public Vector3 BaseOffset;       
+        public Vector3 BaseOffset;
         
         // --- 位置状态 ---
         public bool IsOnBoard = false;   // 是否在棋盘上

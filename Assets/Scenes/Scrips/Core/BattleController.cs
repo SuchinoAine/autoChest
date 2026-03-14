@@ -1,22 +1,17 @@
 using UnityEngine;
 
-
 namespace AutoChess.Core
 {
     public sealed class BattleController : IBattleController
     {
-        private const float MaxSeparationSpeed = 3.0f;  // 分离附加速度上限
-        private const float StrafeWeight = 0.35f;       // 侧移强度（0.2~0.5）
-        private const float RangeEpsilon = 0.05f;       // 射程边界滞回，防抖
-        private const float SeparationWeight = 2.0f;    // 分离强度
-        private const float SeparationRange = 1.5f;     // 作用范围
-        private const float ContactEpsilon = 0.02f;     // 接触距离留一点缝
-        private const float SeparationResolveSpeed = 6f;// 攻击时的“挤开”速度（不影响追击）
-        private const float StrafeSepThreshold = 0.12f; // sep 超过这个才允许侧移（看起来像“被挤了才走位”）
-        private const float DesiredRangeFactor = 0.95f; // 希望保持在 range*0.95 附近
-        private const float RadialPullWeight = 0.25f;   // 拉回强度（很小）
-        private const int CollisionIters = 3;           // PBD 碰撞解算参数 2-4
-        private const float DistEps = 1e-4f;            // PBD 碰撞wu
+        private const float MaxSeparationSpeed = 3.0f;  
+        private const float StrafeWeight = 0.35f;       
+        private const float RangeEpsilon = 0.05f;       
+        private const float SeparationWeight = 2.0f;    
+        private const float SeparationRange = 1.5f;     
+        private const float StrafeSepThreshold = 0.12f; 
+        private const float DesiredRangeFactor = 0.95f; 
+        private const float RadialPullWeight = 0.25f;   
 
         public void StepUnit(BattleWorld world, Unit u, float dt)
         {
@@ -24,15 +19,14 @@ namespace AutoChess.Core
 
             var target = FindBestTargetByScore(world, u);
             if (target == null) return;
-            // register focus
+            
             world.RegisterFocus(target.Id);
 
             float dist = Vector3.Distance(target.Position, u.Position);
             
             if (dist <= u.Range)
             {
-                // in range -> attack
-                ResolveOverlap(world, u, dt);   // 解重叠
+                // 在射程内 -> 原地攻击
                 if (u.CanAttack())
                 {
                     if (world.skillSystem.CastBasicAttack(world, u, target))
@@ -41,18 +35,19 @@ namespace AutoChess.Core
             }
             else
             {
-                // out of range -> move toward (melee) / advance-or-strafe (ranged)
+                // 不在射程内 -> 移动追击或走位
                 Vector3 toTarget = target.Position - u.Position;
                 toTarget.y = 0f;
                 float distToTarget = toTarget.magnitude;
 
                 Vector3 dirToTarget;
                 Vector3 strafe = Vector3.zero;
+                
+                // 计算群聚分离倾向 (Boids 柔软避让，物理硬防穿模交给 PBD)
                 Vector3 sep = ComputeSeparation(world, u);
 
-                if (u.Isranged)
+                if (u.Isranged) 
                 {
-                    // 远程：只有超出射程才前进；射程内不后撤，做轻微侧移找位
                     if (distToTarget > u.Range + RangeEpsilon)
                     {
                         dirToTarget = (distToTarget > 0.0001f) ? (toTarget / distToTarget) : Vector3.zero;
@@ -69,92 +64,35 @@ namespace AutoChess.Core
                             float sepMag = sep.magnitude;
                             strafe = (sepMag > StrafeSepThreshold) ? (perp * (StrafeWeight * side)) : Vector3.zero;
                         }
-                        // 轻微拉回：如果因为各种原因距离被拉大了，就给一点点向目标方向的分量
                         float desired = u.Range * DesiredRangeFactor;
-                        if (distToTarget > desired + 0.15f) // 只在明显偏远时拉回
+                        if (distToTarget > desired + 0.15f) 
                         {
                             Vector3 dirTo = (distToTarget > 0.0001f) ? (toTarget / distToTarget) : Vector3.zero;
-                            dirToTarget = dirTo * RadialPullWeight; // 这是一个方向贡献，后面会归一化
+                            dirToTarget = dirTo * RadialPullWeight; 
                         }
                     }
                 }
                 else
                 {
-                    // 近战：保持追击
                     dirToTarget = (distToTarget > 0.0001f) ? (toTarget / distToTarget) : Vector3.zero;
                 }
-                // 合成移动方向：追击/侧移 + 分离
+                
                 Vector3 moveDir = dirToTarget + strafe + SeparationWeight * sep;
                 if (moveDir.sqrMagnitude > 0.0001f) moveDir = moveDir.normalized;
-                // 先算 nextPos 再处理接触距离
-                Vector3 oldPos = u.Position;
+                
                 Vector3 nextPos = u.Position + moveDir * u.MoveSpeed * dt;
                 nextPos = new Vector3(nextPos.x, 0f, nextPos.z);
 
-                // 硬碰撞（圆-圆不重叠）投影解算
-                ResolveCircleCollisions(world, u, ref nextPos);
                 u.Position = nextPos;
-                if ((u.Position - oldPos).sqrMagnitude > 0.0001f)
-                    world.EmitMove(u, oldPos, u.Position);
             }
         }
 
-        /// <summary>
-        /// 使用 PBD 碰撞解算避免单位重叠
-        /// </summary>
-        private void ResolveCircleCollisions(BattleWorld world, Unit self, ref Vector3 nextPos)
-        {
-            // 固定遍历顺序 + 固定迭代次数 => deterministic
-            for (int iter = 0; iter < CollisionIters; iter++)
-            {
-                bool changed = false;
-                for (int i = 0; i < world.Units.Count; i++)
-                {
-                    var other = world.Units[i];
-                    if (other == self) continue;
-                    if (other.IsDead) continue;
-                    Vector3 a = nextPos;
-                    Vector3 b = other.Position;
-                    a.y = 0f; b.y = 0f;
-                    Vector3 d = a - b;
-
-                    float distSq = d.sqrMagnitude;
-                    float minDist = self.Radius + other.Radius + ContactEpsilon;
-                    float minDistSq = minDist * minDist;
-
-                    if (distSq >= minDistSq) continue;
-                    float dist = Mathf.Sqrt(Mathf.Max(distSq, DistEps));
-                    Vector3 n;
-                    // 如果几乎重合：给一个稳定方向，避免 NaN 和抖动
-                    if (dist < 1e-3f)
-                    {
-                        int side = SideSignFromRng(world, self, other); //deterministic rng
-                        n = (side > 0) ? Vector3.right : Vector3.left;
-                    }
-                    else
-                    {
-                        n = d / dist;
-                    }
-                    // 投影到刚好不重叠的位置
-                    nextPos = b + n * minDist;
-                    nextPos.y = 0f;
-                    changed = true;
-                }
-
-                if (!changed) break;
-            }
-        }
-
-        /// <summary>
-        /// 寻找评分最高的目标，优先在射程内
-        /// </summary>
         private Unit FindBestTargetByScore(BattleWorld world, Unit self)
         {
             Unit best = null;
             float bestScore = float.NegativeInfinity;
-            const float engageEps = 0.10f; // 小滞回：避免刚好在边界抖动
+            const float engageEps = 0.10f; 
 
-            // 先找射程内的敌人
             bool hasInRange = false;
             foreach (var u in world.Units)
             {
@@ -167,16 +105,15 @@ namespace AutoChess.Core
                     break;
                 }
             }
-            // 第二遍：根据是否有射程内目标，决定候选池
+            
             foreach (var u in world.Units)
             {
                 if (u.IsDead) continue;
                 if (u.Team == self.Team) continue;
 
                 float dist = Vector3.Distance(u.Position, self.Position);
-                //  有近的就不看远的 过滤不在射程里的人
                 if (hasInRange && dist > self.Range + engageEps) continue;
-                //  没有近的就看所有敌人
+                
                 float score = ScoreTarget(world, self, u);
                 if (score > bestScore)
                 {
@@ -188,13 +125,8 @@ namespace AutoChess.Core
             return best;
         }
 
-
-        /// <summary>
-        /// 评价目标分数
-        /// </summary>
         private float ScoreTarget(BattleWorld world, Unit self, Unit target)
         {
-            // 安全默认值
             float wLowHp = world.AiConfig != null ? world.AiConfig.wLowHp : 1.0f;
             float wNear = world.AiConfig != null ? world.AiConfig.wNear : 0.7f;
             float wKillable = world.AiConfig != null ? world.AiConfig.wKillable : 1.5f;
@@ -202,7 +134,6 @@ namespace AutoChess.Core
             float wPreferRanged = world.AiConfig != null ? world.AiConfig.wPreferRangedTarget : 0.6f;
             float nearRef = world.AiConfig != null ? world.AiConfig.nearDistRef : 6.0f;
 
-            // decision Rng part
             int seed = world.AiConfig != null ? world.AiConfig.battleSeed : 12345;
             int q = (world.AiConfig != null && world.AiConfig.tickQuant > 0) ? world.AiConfig.tickQuant : 1;
             int jt = world.TickIndex / q;
@@ -210,19 +141,14 @@ namespace AutoChess.Core
             float jtScore = jitterAmp * DecisionRng.Signed(seed, DecisionStream.TargetJitter, self.Id, target.Id, jt);
 
             float dist = Vector3.Distance(target.Position, self.Position);
-            // 1) 残血优先
             float lowHpScore = 1f / (target.Hp + 1f);
-            // 2) 距离越近越优先
             float nearScore = Mathf.Clamp01(1f - (dist / nearRef));
-            // 3) 可击杀
             float killableScore = (self.Atk >= target.Hp) ? 1f : 0f;
-            // 4) 集火：已经有多少队友在打它
             int focusCnt = world.GetFocusCount(target.Id);
-            float focusScore = Mathf.Log(1f + focusCnt); // 避免无限堆叠 log/sqrt： 0, 0.69, 1.09, ...
-            // 5) 后排偏好：只有当“自己是远程”时才偏好打敌方远程
+            float focusScore = Mathf.Log(1f + focusCnt); 
             float preferRangedScore = 0f;
-            if (self.Isranged && target.Isranged)
-                preferRangedScore = 1f;
+            
+            if (self.Isranged && target.Isranged) preferRangedScore = 1f;
 
             float total =
                 wLowHp * lowHpScore +
@@ -235,9 +161,6 @@ namespace AutoChess.Core
             return total;
         }
 
-        /// <summary>
-        /// 计算重叠分离向量
-        /// </summary>
         private Vector3 ComputeSeparation(BattleWorld world, Unit self)
         {
             Vector3 sep = Vector3.zero;
@@ -250,18 +173,18 @@ namespace AutoChess.Core
                 float dist = delta.magnitude;
                 if (dist < 0.0001f) continue;
 
-                // 只在一定范围内考虑
                 if (dist > SeparationRange) continue;
-                float minDist = self.Radius + other.Radius;
+                
+                float r1 = self.Radius > 0.1f ? self.Radius : 0.5f;
+                float r2 = other.Radius > 0.1f ? other.Radius : 0.5f;
+                float minDist = r1 + r2;
 
-                // 只在“过近/重叠”时施加分离
                 if (dist < minDist)
                 {
-                    float overlap = minDist - dist; // 重叠量
-                    sep += delta / dist * overlap;  // 推开方向 * 强度
+                    float overlap = minDist - dist; 
+                    sep += delta / dist * overlap;  
                 }
             }
-            // 限幅，防止抖动或推太猛
             if (sep.sqrMagnitude > 0.001f)
             {
                 var desired = sep.normalized * MaxSeparationSpeed;
@@ -271,53 +194,14 @@ namespace AutoChess.Core
             return sep;
         }
 
-        /// <summary>
-        /// 用 BattleRng 生成单位侧移方向
-        /// </summary>
         private int SideSignFromRng(BattleWorld world, Unit u, Unit target)
         {
-            // 固定左右：保证同一单位每局一致（也利于复现）
             int seed = world.AiConfig != null ? world.AiConfig.battleSeed : 12345;
-            // 每 30 tick 才可能换一次
             int tickIndex = world.TickIndex;
             int sideTick = tickIndex / 30;
             int side = DecisionRng.Coin(seed, DecisionStream.StrafeSide, u.Id, target.Id, sideTick, 0.5f) ? 1 : -1;
 
             return side;
-        }
-
-        /// <summary>
-        /// 解决单位间重叠（攻击后调用）
-        /// </summary>
-        private void ResolveOverlap(BattleWorld world, Unit u, float dt)
-        {
-            Vector3 push = Vector3.zero;
-
-            foreach (var other in world.Units)
-            {
-                if (other == u) continue;
-                if (other.IsDead) continue;
-
-                Vector3 delta = u.Position - other.Position;
-                float dist = delta.magnitude;
-                if (dist < 0.0001f) continue;
-
-                float minDist = u.Radius + other.Radius + ContactEpsilon;
-                // 只在“重叠”时推开
-                if (dist < minDist)
-                {
-                    float overlap = minDist - dist;
-                    push += delta / dist * overlap;
-                }
-            }
-
-            if (push.sqrMagnitude > 0.000001f)
-            {
-                // 用一个固定速度把重叠解开（不会让单位乱跑）
-                Vector3 dir = push.normalized;
-                u.Position += dt * SeparationResolveSpeed * dir;
-                u.Position = new Vector3(u.Position.x, 0f, u.Position.z);
-            }
         }
     }
 }

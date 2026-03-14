@@ -12,17 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: blue_card 3
   m_EditorClassIdentifier: 
-  unitId: b_3
   unitName: "\u523A\u9635"
   cost: 3
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: 2ea7057c9abf3d846860b5052105afa2, type: 3}
-  bonds:
-  - bondName: "\u9510\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u7A81\u51FB"
-    bondIcon: {fileID: 0}
   prefab: {fileID: 534829692843271014, guid: 0a7b7d54e226e6149b1489917f46cf72, type: 3}
-  maxHp: 1200
-  attackDamage: 70
-  attackRange: 1.5
+  bonds:
+  - {fileID: 0}
+  - {fileID: 0}
+  hp: 0
+  atk: 0
+  atkInterval: 0
+  moveSpeed: 0
+  range: 0
+  radius: 0.35
+  isranged: 0
+  basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
+  defaultSkill: {fileID: 0}

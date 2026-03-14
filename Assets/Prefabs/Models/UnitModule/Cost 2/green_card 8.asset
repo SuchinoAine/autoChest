@@ -12,17 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: green_card 8
   m_EditorClassIdentifier: 
-  unitId: g_8
   unitName: "\u53CC\u9525"
   cost: 2
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: 7fbec8defcfcb7a42b14727da57854d1, type: 3}
-  bonds:
-  - bondName: "\u9510\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u7A81\u51FB"
-    bondIcon: {fileID: 0}
   prefab: {fileID: 4000124419245567689, guid: 383ad5f82e9355b42a83e921436a6bfe, type: 3}
-  maxHp: 550
-  attackDamage: 85
-  attackRange: 1.5
+  bonds:
+  - {fileID: 0}
+  - {fileID: 0}
+  hp: 0
+  atk: 0
+  atkInterval: 0
+  moveSpeed: 0
+  range: 0
+  radius: 0.56
+  isranged: 0
+  basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
+  defaultSkill: {fileID: 0}

@@ -12,19 +12,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: violet_card 2
   m_EditorClassIdentifier: 
-  unitId: v_2
   unitName: "\u68D8\u73AF"
   cost: 4
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: ec59aa44be9d9e544838fb688cd2ff50, type: 3}
-  bonds:
-  - bondName: "\u9510\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u60AC\u4F53"
-    bondIcon: {fileID: 0}
-  - bondName: "\u77E9\u9635"
-    bondIcon: {fileID: 0}
   prefab: {fileID: 6181945854366277532, guid: f41ad04023019174a89809eb392f6f7e, type: 3}
-  maxHp: 1100
-  attackDamage: 150
-  attackRange: 4
+  bonds:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  hp: 0
+  atk: 0
+  atkInterval: 0
+  moveSpeed: 0
+  range: 0
+  radius: 0.36
+  isranged: 0
+  basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
+  defaultSkill: {fileID: 0}
