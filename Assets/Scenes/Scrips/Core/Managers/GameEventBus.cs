@@ -19,5 +19,8 @@ namespace AutoChess.Managers
         // === 等级与经验事件 ===
         // 参数: 当前等级, 当前经验, 升下一级所需经验
         public static Action<int, int, int> OnLevelExpChanged; 
+
+        // ✅ 新增：羁绊UI刷新事件 (传递羁绊数据SO字典，供左侧UI渲染)
+        public static Action<Dictionary<BondDataSO, int>> OnSynergyChanged; 
     }
 }

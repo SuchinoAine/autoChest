@@ -18,9 +18,9 @@ MonoBehaviour:
   borderImage: {fileID: 21300000, guid: ec59aa44be9d9e544838fb688cd2ff50, type: 3}
   prefab: {fileID: 6150649011139109527, guid: f6d4c6cd82508c244b72b3af77686030, type: 3}
   bonds:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: b7da88c965b18654f8a92153ed34e2a9, type: 2}
+  - {fileID: 11400000, guid: 9a33a241373226344b8b663b54e89e69, type: 2}
+  - {fileID: 11400000, guid: 10bd71567c3b3a0479c2c6659691440a, type: 2}
   hp: 0
   atk: 0
   atkInterval: 0

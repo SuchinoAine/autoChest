@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using TMPro; // 引入 TextMeshPro
+using TMPro;
 using AutoChess.Configs;
 using AutoChess.View;
 
@@ -10,18 +10,21 @@ namespace AutoChess.Managers
     {
         public static UIManager Instance { get; private set; }
 
-        [Header("UI 面板文字 (全部使用 TextMeshPro)")]
+        [Header("UI 面板文字")]
         public GameObject shopPanel;
-        public TextMeshProUGUI coinText; 
+        public TextMeshProUGUI coinText;
         public TextMeshProUGUI timerText;
-        public TextMeshProUGUI levelText; // 显示等级和经验
-        
-        [Header("动态商店卡池 (严格对应5个槽位)")]
-        [Tooltip("请按顺序将 Hierarchy 中的 container1 到 container5 拖入此数组")]
-        public Transform[] cardContainers = new Transform[5]; 
-        public GameObject cardPrefab;   
-        
-        // 缓存生成的卡牌 UI (固定5个)
+        public TextMeshProUGUI levelText;
+
+        [Header("动态商店卡池")]
+        public Transform[] cardContainers = new Transform[5];
+        public GameObject cardPrefab;
+
+        // ✅ 新增：左侧羁绊面板配置
+        [Header("羁绊 UI (左侧面板)")]
+        public Transform bondsContainer;  // UI容器 (挂了 Vertical Layout Group)
+        public GameObject bondItemPrefab; // 刚才写的单条羁绊 UI 预制体
+
         private ShopCardUI[] _spawnedCards = new ShopCardUI[5];
 
         private void Awake()
@@ -37,7 +40,9 @@ namespace AutoChess.Managers
             GameEventBus.OnEnterCombatPhase += HideShop;
             GameEventBus.OnCoinChanged += UpdateCoinUI;
             GameEventBus.OnShopRefreshed += UpdateShopUI;
-            GameEventBus.OnLevelExpChanged += UpdateLevelUI; 
+            GameEventBus.OnLevelExpChanged += UpdateLevelUI;
+            // ✅ 订阅羁绊刷新事件
+            GameEventBus.OnSynergyChanged += UpdateSynergyUI;
         }
 
         private void OnDisable()
@@ -47,16 +52,17 @@ namespace AutoChess.Managers
             GameEventBus.OnCoinChanged -= UpdateCoinUI;
             GameEventBus.OnShopRefreshed -= UpdateShopUI;
             GameEventBus.OnLevelExpChanged -= UpdateLevelUI;
+            // ✅ 取消订阅
+            GameEventBus.OnSynergyChanged -= UpdateSynergyUI;
         }
 
         private void Update()
         {
             if (GameManager.Instance != null && GameManager.Instance.CurrentPhase == GamePhase.Preparation)
             {
-                if (timerText != null) 
+                if (timerText != null)
                     timerText.text = Mathf.CeilToInt(GameManager.Instance.PhaseTimer).ToString();
-                    
-                // 快捷键支持
+
                 if (Input.GetKeyDown(KeyCode.D)) OnRerollButtonClicked();
                 if (Input.GetKeyDown(KeyCode.F)) OnBuyExpButtonClicked();
             }
@@ -64,7 +70,7 @@ namespace AutoChess.Managers
 
         private void ShowShop() => shopPanel.SetActive(true);
         private void HideShop() => shopPanel.SetActive(false);
-        
+
         private void UpdateCoinUI(int coins)
         {
             if (coinText != null) coinText.text = $"{coins}";
@@ -75,50 +81,66 @@ namespace AutoChess.Managers
             if (levelText != null)
             {
                 if (level >= ShopManager.Instance.MaxLevel)
-                {
                     levelText.text = $"Lv {level} (MAX)";
-                }
                 else
-                {
                     levelText.text = $"Lv {level}  [{exp}/{nextExp}]";
-                }
             }
         }
 
-        // 精准对位 5 个 Container
         private void UpdateShopUI(List<CardDataSO> shopUnits)
         {
             for (int i = 0; i < cardContainers.Length; i++)
             {
-                if (i >= shopUnits.Count) break; // 防越界保护
+                if (i >= shopUnits.Count) break;
 
-                // 1. 如果这个 Container 里还没生成过 Card 预制体，就生成一个
                 if (_spawnedCards[i] == null)
                 {
                     GameObject newCardObj = Instantiate(cardPrefab, cardContainers[i]);
-                    // 确保生成的卡牌在 Container 中心且不变形
-                    newCardObj.transform.localPosition = Vector3.zero; 
-                    newCardObj.transform.localScale = Vector3.one; 
+                    newCardObj.transform.localPosition = Vector3.zero;
+                    newCardObj.transform.localScale = Vector3.one;
                     _spawnedCards[i] = newCardObj.GetComponent<ShopCardUI>();
                 }
 
-                // 2. 根据数据刷新显示
                 CardDataSO cardData = shopUnits[i];
                 if (cardData != null)
                 {
-                    // 有卡牌数据：激活卡牌节点，并注入数据
                     _spawnedCards[i].gameObject.SetActive(true);
                     _spawnedCards[i].Setup(cardData, i);
                 }
                 else
                 {
-                    // 数据为 null（被买走或槽位轮空）：将卡牌节点隐藏
-                    _spawnedCards[i].gameObject.SetActive(false); 
+                    _spawnedCards[i].gameObject.SetActive(false);
                 }
             }
         }
 
-        // 绑定给 UI 的按钮事件
+        // ✅ 新增：渲染左侧羁绊面板的核心逻辑
+        private void UpdateSynergyUI(Dictionary<BondDataSO, int> activeBonds)
+        {
+            if (bondsContainer == null || bondItemPrefab == null) return;
+
+
+            // 1. 清理旧的羁绊条目
+            foreach (Transform child in bondsContainer)
+            {
+                Destroy(child.gameObject);
+            }
+
+            // 2. 根据字典数据生成新的条目
+            foreach (var kvp in activeBonds)
+            {
+                // kvp.Key 是 BondDataSO
+                // kvp.Value 是该羁绊在场上的不重复英雄数量
+                GameObject go = Instantiate(bondItemPrefab, bondsContainer);
+                BondUIItem uiItem = go.GetComponent<BondUIItem>();
+
+                if (uiItem != null)
+                {
+                    // ✅ 这里把整个 SO 对象和统计数量传过去
+                    uiItem.Setup(kvp.Key, kvp.Value);
+                }
+            }
+        }
         public void OnRerollButtonClicked() => ShopManager.Instance.RequestReroll();
         public void OnBuyExpButtonClicked() => ShopManager.Instance.RequestBuyExp();
         public void ToggleShopPanel() => shopPanel?.SetActive(!shopPanel.activeSelf);

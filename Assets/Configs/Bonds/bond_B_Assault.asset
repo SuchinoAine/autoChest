@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 02b5e3292cb80bb4d9c3e57a18f82217, type: 3}
-  m_Name: NewBondData 1
+  m_Name: bond_B_Assault
   m_EditorClassIdentifier: 
-  bondName: 
-  bondIcon: {fileID: 0}
+  bondName: "\u7A81\u51FB"
+  bondIcon: {fileID: 1623637307, guid: 1bdd0c7f5d1c1584ebe6e43cc0ac0dfd, type: 3}
