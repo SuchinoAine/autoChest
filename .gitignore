@@ -8,6 +8,11 @@
 [Uu]serSettings/
 [Pp]lugins/
 Assets/BakedMeshes/
+Assets/polyhedronGenerator/
+Assets/ProBuilder Data/
+Assets/QuickOutline/
+
+
 
 # IDE / Editor
 .vs/
