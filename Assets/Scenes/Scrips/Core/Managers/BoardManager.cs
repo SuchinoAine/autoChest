@@ -1,3 +1,4 @@
+using AutoChess.Core;
 using UnityEngine;
 
 namespace AutoChess.Managers
@@ -14,7 +15,7 @@ namespace AutoChess.Managers
 
         // 4行7列的二维数组
         public Transform[,] BoardAnchors { get; private set; }
-        public GameObject[,] BoardUnits { get; private set; }
+        public ChessUnit[,] BoardUnits { get; private set; }
 
         public Transform[,] BoardAnchorsEne { get; private set; }
         public GameObject[,] BoardUnitsEne { get; private set; }
@@ -25,7 +26,7 @@ namespace AutoChess.Managers
             Instance = this;
 
             BoardAnchors = new Transform[4, 7];
-            BoardUnits = new GameObject[4, 7];
+            BoardUnits = new ChessUnit[4, 7];
             BoardAnchorsEne = new Transform[4, 7];
             BoardUnitsEne = new GameObject[4, 7];
 

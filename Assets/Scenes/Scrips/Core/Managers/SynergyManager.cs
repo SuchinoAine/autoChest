@@ -49,7 +49,7 @@ namespace AutoChess.Managers
                 {
                     if (boardUnits[r, c] != null)
                     {
-                        var cu = boardUnits[r, c].GetComponent<ChessUnit>();
+                        var cu = boardUnits[r, c]; // 直接获取 ChessUnit 组件
                         // 保证不重名
                         if (cu != null && cu.Data != null && !uniqueUnits.Contains(cu.Data.unitName))
                         {

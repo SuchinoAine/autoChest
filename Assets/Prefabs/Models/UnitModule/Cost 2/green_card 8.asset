@@ -16,15 +16,15 @@ MonoBehaviour:
   cost: 2
   cardImage: {fileID: 0}
   borderImage: {fileID: 21300000, guid: 7fbec8defcfcb7a42b14727da57854d1, type: 3}
-  prefab: {fileID: 4000124419245567689, guid: 383ad5f82e9355b42a83e921436a6bfe, type: 3}
+  prefab: {fileID: 7234473707195676778, guid: 62355f96671ac4943bc1bccc4b684390, type: 3}
   bonds:
   - {fileID: 11400000, guid: b7da88c965b18654f8a92153ed34e2a9, type: 2}
   - {fileID: 11400000, guid: 184ef7fe853fe7f499fd92eb2a7d3502, type: 2}
-  hp: 0
-  atk: 0
-  atkInterval: 0
-  moveSpeed: 0
-  range: 0
+  hp: 550
+  atk: 85
+  atkInterval: 0.94
+  moveSpeed: 3.9
+  range: 1.5
   radius: 0.56
   isranged: 0
   basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}

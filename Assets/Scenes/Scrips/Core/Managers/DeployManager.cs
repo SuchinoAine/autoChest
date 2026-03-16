@@ -74,25 +74,22 @@ namespace AutoChess.Managers
 
         private void Drop()
         {
-            // 出售判定
-            // 出售检测 (屏幕底部 5%)
             if (Input.mousePosition.y < Screen.height * 0.05f)
             {
-                // 1. 计算售价：1星=1倍，2星=3倍，3星=9倍
                 int starMultiplier = (int)Mathf.Pow(3, _draggingUnit.StarLevel - 1);
                 int sellPrice = _draggingUnit.Data.cost * starMultiplier; 
                 
-                // 给钱
                 EconomyManager.Instance.AddGold(sellPrice);
                 
-                // ✅ 2. 核心修复：根据星级回收对应数量的卡牌到公共卡池
-                // 1星回1张，2星回3张，3星回9张
                 for (int i = 0; i < starMultiplier; i++)
                 {
                     ShopManager.Instance.SellCardToPool(_draggingUnit.Data);
                 }
+                
                 Debug.Log($"<color=orange>💰 出售了 [{_draggingUnit.StarLevel}星 {_draggingUnit.Data.unitName}]，获得了 {sellPrice} 金币，回收了 {starMultiplier} 张卡牌。</color>");
-                Destroy(_draggingUnit.gameObject);
+                
+                // ✅ 补齐对象池闭环：放回对象池
+                PoolManager.Instance.ReleaseUnit(_draggingUnit.Data, _draggingUnit.gameObject);
                 _draggingUnit = null;
 
                 if (SynergyManager.Instance != null) SynergyManager.Instance.BroadcastSynergiesToUI();
@@ -100,9 +97,9 @@ namespace AutoChess.Managers
             }
 
             Transform[] benchAnchors = BenchManager.Instance.BenchAnchors;
-            GameObject[] benchedUnits = BenchManager.Instance.BenchedUnits;
+            ChessUnit[] benchedUnits = BenchManager.Instance.BenchedUnits; // ✅ 使用 ChessUnit[]
             Transform[,] boardAnchors = BoardManager.Instance.BoardAnchors;
-            GameObject[,] boardUnits = BoardManager.Instance.BoardUnits;
+            ChessUnit[,] boardUnits = BoardManager.Instance.BoardUnits;    // ✅ 使用 ChessUnit[,]
 
             float minDistance = float.MaxValue;
             float snapRadius = 2.0f;
@@ -137,9 +134,9 @@ namespace AutoChess.Managers
 
             if (targetAnchor != null)
             {
-                GameObject targetOccupant = targetIsBoard ? boardUnits[bestBoardRow, bestBoardCol] : benchedUnits[bestBenchIdx];
+                // ✅ 现在获取到的是直接的 ChessUnit，不用再 GetComponent
+                ChessUnit targetOccupant = targetIsBoard ? boardUnits[bestBoardRow, bestBoardCol] : benchedUnits[bestBenchIdx];
 
-                // 人口限制判定
                 if (targetIsBoard && !_originalIsOnBoard && targetOccupant == null)
                 {
                     int currentPopulation = 0;
@@ -154,9 +151,9 @@ namespace AutoChess.Managers
 
                 if (targetAnchor != null)
                 {
-                    if (targetOccupant != null && targetOccupant != _draggingUnit.gameObject)
+                    if (targetOccupant != null && targetOccupant.gameObject != _draggingUnit.gameObject)
                     {
-                        ChessUnit otherUnit = targetOccupant.GetComponent<ChessUnit>();
+                        ChessUnit otherUnit = targetOccupant;
 
                         if (_originalIsOnBoard)
                         {
@@ -178,7 +175,7 @@ namespace AutoChess.Managers
 
                     if (targetIsBoard)
                     {
-                        boardUnits[bestBoardRow, bestBoardCol] = _draggingUnit.gameObject;
+                        boardUnits[bestBoardRow, bestBoardCol] = _draggingUnit;
                         _draggingUnit.IsOnBoard = true;
                         _draggingUnit.BoardRow = bestBoardRow;
                         _draggingUnit.BoardCol = bestBoardCol;
@@ -188,7 +185,7 @@ namespace AutoChess.Managers
                     }
                     else
                     {
-                        benchedUnits[bestBenchIdx] = _draggingUnit.gameObject;
+                        benchedUnits[bestBenchIdx] = _draggingUnit;
                         _draggingUnit.IsOnBoard = false;
                         _draggingUnit.CurrentBenchSlot = bestBenchIdx;
                     }
@@ -200,12 +197,12 @@ namespace AutoChess.Managers
             {
                 if (_originalIsOnBoard)
                 {
-                    boardUnits[_originalBoardRow, _originalBoardCol] = _draggingUnit.gameObject;
+                    boardUnits[_originalBoardRow, _originalBoardCol] = _draggingUnit;
                     _draggingUnit.transform.SetParent(boardAnchors[_originalBoardRow, _originalBoardCol]);
                 }
                 else
                 {
-                    benchedUnits[_originalBenchSlot] = _draggingUnit.gameObject;
+                    benchedUnits[_originalBenchSlot] = _draggingUnit;
                     _draggingUnit.transform.SetParent(benchAnchors[_originalBenchSlot]);
                 }
             }
@@ -213,7 +210,6 @@ namespace AutoChess.Managers
             _draggingUnit.transform.localPosition = _draggingUnit.BaseOffset;
             _draggingUnit = null;
 
-            // ✅ 拖放结束后，重新计算羁绊并刷新 UI
             if (SynergyManager.Instance != null) SynergyManager.Instance.BroadcastSynergiesToUI();
         }
     }

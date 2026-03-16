@@ -18,7 +18,7 @@ namespace AutoChess.Core
         public readonly SystemBuff buffSystem = new();
         public readonly SystemSkill skillSystem = new();
         public readonly List<IBattleEventSink> Sinks = new();
-        
+
         public void AddSink(IBattleEventSink s) { if (s != null) Sinks.Add(s); }
         private readonly Dictionary<string, int> _focusCount = new();
 
@@ -28,12 +28,12 @@ namespace AutoChess.Core
             buffSystem.Update(this, dt);
             skillSystem.Update(this, dt);
             Time += dt;
-            
-            foreach (var u in Units) 
+
+            foreach (var u in Units)
             {
                 if (!u.IsDead) u.TickCooldown(dt);
             }
-            
+
             _focusCount.Clear();
 
             int n = Units.Count;
@@ -74,7 +74,7 @@ namespace AutoChess.Core
                         Vector3 d = u1.Position - u2.Position;
                         d.y = 0f;
                         float distSq = d.sqrMagnitude;
-                        
+
                         // ✅ 防呆保护：如果你在 CardDataSO 里忘了填 Radius，默认给 0.5
                         float r1 = u1.Radius > 0.1f ? u1.Radius : 0.5f;
                         float r2 = u2.Radius > 0.1f ? u2.Radius : 0.5f;
@@ -96,7 +96,7 @@ namespace AutoChess.Core
                             }
 
                             float overlap = minDist - dist;
-                            
+
                             // 互相挤压：各承担 50% 的推力
                             Vector3 corr = n * (overlap * 0.5f);
                             u1.Position += corr;
@@ -121,8 +121,8 @@ namespace AutoChess.Core
             if (!_focusCount.ContainsKey(targetId)) _focusCount[targetId] = 0;
             _focusCount[targetId]++;
         }
-        
-        internal int GetFocusCount(string targetId)=> _focusCount.TryGetValue(targetId, out var c) ? c : 0;
+
+        internal int GetFocusCount(string targetId) => _focusCount.TryGetValue(targetId, out var c) ? c : 0;
 
         public void DealDamage(Unit source, Unit target, float amount)
         {
@@ -157,15 +157,26 @@ namespace AutoChess.Core
         {
             for (int i = 0; i < Sinks.Count; i++)
             {
-                if (Sinks[i] is System.IDisposable d) { try { d.Dispose(); } catch {} }
+                if (Sinks[i] is System.IDisposable d) { try { d.Dispose(); } catch { } }
             }
         }
 
         private void CheckEnd()
         {
-            var aliveA = Units.Any(u => !u.IsDead && u.Team == Team.A);
-            var aliveB = Units.Any(u => !u.IsDead && u.Team == Team.B);
-            if (aliveA && aliveB) return;
+            bool aliveA = false;
+            bool aliveB = false;
+
+            for (int i = 0; i < Units.Count; i++)
+            {
+                var u = Units[i];
+                if (u.IsDead) continue;
+
+                if (u.Team == Team.A) aliveA = true;
+                else if (u.Team == Team.B) aliveB = true;
+
+                // ✅ 性能优化：只要双方都有存活，直接跳出循环，省去后续无意义的遍历
+                if (aliveA && aliveB) return;
+            }
 
             IsEnded = true;
             Winner = aliveA ? Team.A : Team.B;

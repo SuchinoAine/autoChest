@@ -1,5 +1,5 @@
 using System;
-using System.Collections; // ✅ 新增：用于支持协程 IEnumerator
+using System.Collections;
 using System.Collections.Generic;
 using AutoChess.Configs;
 using AutoChess.Core;
@@ -11,8 +11,8 @@ using UnityEngine;
 [Serializable]
 public class EnemySetup
 {
-    public int row; // 0-3
-    public int col; // 0-6
+    public int row;
+    public int col;
 
     [Header("模型与表现")]
     public GameObject prefab;
@@ -48,7 +48,7 @@ public class SandboxRunner : MonoBehaviour
     [Header("HUD")]
     public GameObject unitHudPrefab;
 
-    private bool _isEnding = false; // ✅ 新增：防止协程重复触发
+    private bool _isEnding = false;
 
     void Start()
     {
@@ -73,7 +73,6 @@ public class SandboxRunner : MonoBehaviour
     {
         if (GameManager.Instance == null || GameManager.Instance.CurrentPhase != GamePhase.Combat) return;
 
-        // ✅ 核心修改 1：拦截战斗结束瞬间，转交给协程处理
         if (_world.IsEnded)
         {
             if (!_isEnding)
@@ -97,20 +96,13 @@ public class SandboxRunner : MonoBehaviour
         }
     }
 
-    // ✅ 核心修改 2：新增战斗结束协程
     private IEnumerator HandleCombatEndCo()
     {
-        // 1. Debug 打印胜利方
         Debug.Log($"[SandboxRunner] 战斗结束！胜利方是: {_world.Winner}");
-
-        // 2. 暂停/缓冲 2 秒，让玩家看清结果
         yield return new WaitForSeconds(2f);
-
-        // 3. 释放锁，并正式通知 GameManager 结算（这会引发状态切换并调用 ResetBoard）
         _isEnding = false;
         GameManager.Instance.ReportCombatEnd(_world.Winner);
     }
-
 
     private void LoadPlayerUnits()
     {
@@ -118,7 +110,6 @@ public class SandboxRunner : MonoBehaviour
         var playerUnits = BoardManager.Instance.BoardUnits;
         var playerAnchors = BoardManager.Instance.BoardAnchors;
 
-        // ✅ 1. 开战前，先向管家索要当前的羁绊计算结果 (字典的 Key 是羁绊的中文名 string)
         Dictionary<string, int> activeSynergies = null;
         if (SynergyManager.Instance != null)
         {
@@ -128,41 +119,39 @@ public class SandboxRunner : MonoBehaviour
         {
             for (int c = 0; c < 7; c++)
             {
-                GameObject go = playerUnits[r, c];
-                if (go != null)
+                // 直接获取 ChessUnit
+                ChessUnit cu = playerUnits[r, c];
+
+                if (cu != null && cu.Data != null)
                 {
-                    ChessUnit cu = go.GetComponent<ChessUnit>();
-                    if (cu != null && cu.Data != null)
+                    GameObject go = cu.gameObject; // 通过组件反向获取 GameObject
+                    Transform anchor = playerAnchors[r, c];
+                    if (anchor == null) continue;
+
+                    string id = $"A{++idxA}";
+                    var unit = CreateUnitFromCard(id, cu.Data, Team.A, anchor.position, cu.StarLevel, activeSynergies);
+                    if (unit != null)
                     {
-                        Transform anchor = playerAnchors[r, c];
-                        if (anchor == null) continue;
+                        UnitView view = go.GetComponent<UnitView>();
+                        if (view == null) view = go.AddComponent<UnitView>();
+                        view.unitId = id;
+                        view.team = Team.A;
 
-                        string id = $"A{++idxA}";
-                        // ✅ 2. 把羁绊字典传给构造函数
-                        var unit = CreateUnitFromCard(id, cu.Data, Team.A, anchor.position, cu.StarLevel, activeSynergies);
-                        if (unit != null)
-                        {
-                            UnitView view = go.GetComponent<UnitView>();
-                            if (view == null) view = go.AddComponent<UnitView>();
-                            view.unitId = id;
-                            view.team = Team.A;
-
-                            _world.Add(unit);
-                            _views[id] = view;
-                            AttachHud(go, unit);
-                        }
+                        _world.Add(unit);
+                        _views[id] = view;
+                        AttachHud(go, unit);
                     }
                 }
             }
         }
     }
 
-    // ✅ 接收羁绊字典，并在生成战斗 Unit 时加上额外的数值
+
+
     private Unit CreateUnitFromCard(string id, CardDataSO card, Team team, Vector3 startPos, int starLevel, Dictionary<string, int> synergies)
     {
         if (card == null) return null;
 
-        // 1. 基础星级数值膨胀 (1星1倍，2星1.8倍，3星3.6倍)
         float multi = 1f;
         if (starLevel == 2) multi = 1.8f;
         if (starLevel == 3) multi = 3.6f;
@@ -173,15 +162,11 @@ public class SandboxRunner : MonoBehaviour
         float finalMoveSpeed = card.moveSpeed;
         float finalRange = card.range;
 
-        // 2. 核心：羁绊数值增强 (只给己方英雄加成，且需要满足羁绊条件)
         if (team == Team.A && synergies != null && card.bonds != null)
         {
-            // 提取该棋子身上的所有羁绊名称，方便快速判断
             HashSet<string> myBonds = new HashSet<string>();
             foreach (var b in card.bonds) if (b != null) myBonds.Add(b.bondName);
 
-            // ================= 【形体羁绊】 =================
-            // 🛡️ 坚体 [2/4/6]: 纯粹的生命力强化
             if (myBonds.Contains("坚体") && synergies.ContainsKey("坚体"))
             {
                 int count = synergies["坚体"];
@@ -189,8 +174,6 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 4) finalHp += 1000f;
                 else if (count >= 2) finalHp += 400f;
             }
-
-            // ⚔️ 锐体 [2/4/6]: 极致的攻击力提升
             if (myBonds.Contains("锐体") && synergies.ContainsKey("锐体"))
             {
                 int count = synergies["锐体"];
@@ -198,8 +181,6 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 4) finalAtk += 80f;
                 else if (count >= 2) finalAtk += 30f;
             }
-
-            // ☯️ 圆体 [2/4/6]: 均衡的生命与攻击加成
             if (myBonds.Contains("圆体") && synergies.ContainsKey("圆体"))
             {
                 int count = synergies["圆体"];
@@ -207,8 +188,6 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 4) { finalHp += 500f; finalAtk += 50f; }
                 else if (count >= 2) { finalHp += 200f; finalAtk += 20f; }
             }
-
-            // 💨 悬体 [2/4]: 高机动性，移速与攻速(攻击间隔)提升
             if (myBonds.Contains("悬体") && synergies.ContainsKey("悬体"))
             {
                 int count = synergies["悬体"];
@@ -216,8 +195,6 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 2) { finalMoveSpeed += 1.5f; finalAtkInterval -= 0.15f; }
             }
 
-            // ================= 【定位羁绊】 =================
-            // 🔪 突击 [2/4/6]: 恐怖的基础伤害附加
             if (myBonds.Contains("突击") && synergies.ContainsKey("突击"))
             {
                 int count = synergies["突击"];
@@ -225,8 +202,6 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 4) finalAtk += 100f;
                 else if (count >= 2) finalAtk += 40f;
             }
-
-            // 🧱 壁垒 [2/4/6]: 坚不可摧的前排血量
             if (myBonds.Contains("壁垒") && synergies.ContainsKey("壁垒"))
             {
                 int count = synergies["壁垒"];
@@ -234,16 +209,12 @@ public class SandboxRunner : MonoBehaviour
                 else if (count >= 4) finalHp += 1200f;
                 else if (count >= 2) finalHp += 500f;
             }
-
-            // 🏹 射手 [2/4]: 增加射程与部分攻击力
             if (myBonds.Contains("射手") && synergies.ContainsKey("射手"))
             {
                 int count = synergies["射手"];
                 if (count >= 4) { finalRange += 2.0f; finalAtk += 80f; }
                 else if (count >= 2) { finalRange += 1.0f; finalAtk += 30f; }
             }
-
-            // 🔮 矩阵 [2/4/6]: 大幅度缩短攻击间隔 (增加攻速)
             if (myBonds.Contains("矩阵") && synergies.ContainsKey("矩阵"))
             {
                 int count = synergies["矩阵"];
@@ -253,10 +224,8 @@ public class SandboxRunner : MonoBehaviour
             }
         }
 
-        // 3. 安全校验：保证攻击间隔永远不可能为负数或0（极限攻速限制为一秒五刀）
         finalAtkInterval = Mathf.Max(0.2f, finalAtkInterval);
 
-        // 4. 生成携带全部羁绊与星级Buff的终极单位！
         return new Unit(
             id, team,
             finalHp, finalAtk, finalAtkInterval, finalMoveSpeed,
@@ -297,16 +266,12 @@ public class SandboxRunner : MonoBehaviour
             if (enemy.row < 0 || enemy.row >= 4 || enemy.col < 0 || enemy.col >= 7) continue;
 
             Transform anchor = enemyAnchors[enemy.row, enemy.col];
-            if (anchor == null)
-            {
-                Debug.LogError($"[SandboxRunner] 无法生成敌人！找不到敌方棋盘 第 {enemy.row} 行，第 {enemy.col} 列的格子。");
-                continue;
-            }
+            if (anchor == null) continue;
 
             string id = $"B{++idxB}";
-            GameObject go = Instantiate(enemy.prefab, anchor);
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.Euler(0, 180, 0);
+
+            // ✅ 核心修改：通过对象池获取野怪
+            GameObject go = PoolManager.Instance.GetPrefab(enemy.prefab, anchor.position, Quaternion.Euler(0, 180, 0), anchor);
 
             MeshFilter mf = go.GetComponentInChildren<MeshFilter>();
             if (mf != null && mf.sharedMesh != null)
@@ -361,7 +326,6 @@ public class SandboxRunner : MonoBehaviour
     {
         if (BoardManager.Instance == null) return;
 
-        // ✅ 核心修改 3：在归位前，把存活/死亡的逻辑 Unit 强行回满血，刷新CD
         if (_world != null && _world.Units != null)
         {
             foreach (var u in _world.Units)
@@ -382,7 +346,16 @@ public class SandboxRunner : MonoBehaviour
             {
                 if (enemyUnits[r, c] != null)
                 {
-                    Destroy(enemyUnits[r, c]);
+                    // ✅ 核心修改：查找当初生成的 Prefab Key，放回对象池
+                    GameObject prefabKey = enemySetups.Find(e => e.row == r && e.col == c)?.prefab;
+                    if (prefabKey != null)
+                    {
+                        PoolManager.Instance.ReleasePrefab(prefabKey, enemyUnits[r, c]);
+                    }
+                    else
+                    {
+                        Destroy(enemyUnits[r, c]);
+                    }
                     enemyUnits[r, c] = null;
                 }
             }
@@ -393,22 +366,21 @@ public class SandboxRunner : MonoBehaviour
         {
             for (int c = 0; c < 7; c++)
             {
-                GameObject go = playerUnits[r, c];
-                if (go != null)
+                // ✅ 修改这里：直接获取 ChessUnit
+                ChessUnit cu = playerUnits[r, c];
+
+                if (cu != null)
                 {
-                    ChessUnit cu = go.GetComponent<ChessUnit>();
-                    if (cu != null)
-                    {
-                        go.transform.localPosition = cu.BaseOffset;
-                        go.transform.localRotation = cu.Data.prefab.transform.localRotation;
+                    GameObject go = cu.gameObject; // ✅ 反向获取 GameObject
 
-                        if (!go.activeSelf) go.SetActive(true);
-                        go.transform.localScale = cu.Data.prefab.transform.localScale;
+                    go.transform.localPosition = cu.BaseOffset;
+                    go.transform.localRotation = cu.Data.prefab.transform.localRotation;
 
-                        // ✅ 强行唤醒可能被隐藏的血条
-                        var hud = go.GetComponentInChildren<UnitHud>(true);
-                        if (hud != null) hud.gameObject.SetActive(true);
-                    }
+                    if (!go.activeSelf) go.SetActive(true);
+                    go.transform.localScale = cu.Data.prefab.transform.localScale;
+
+                    var hud = go.GetComponentInChildren<UnitHud>(true);
+                    if (hud != null) hud.gameObject.SetActive(true);
                 }
             }
         }

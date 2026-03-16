@@ -53,7 +53,7 @@ namespace AutoChess.Managers
             if (GameManager.Instance.CurrentPhase != GamePhase.Preparation) return;
             if (PlayerLevel >= MaxLevel) return;
 
-            // ✅ 找管家扣钱
+            // 扣钱
             if (EconomyManager.Instance.SpendGold(4))
             {
                 AddExp(4);

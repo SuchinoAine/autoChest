@@ -22,8 +22,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 184ef7fe853fe7f499fd92eb2a7d3502, type: 2}
   hp: 450
   atk: 65
-  atkInterval: 1
-  moveSpeed: 2
+  atkInterval: 0.79
+  moveSpeed: 3.7
   range: 1.5
   radius: 0.4
   isranged: 0

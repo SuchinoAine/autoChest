@@ -22,10 +22,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ab1136f9a6e839343bbdc59d066b4379, type: 2}
   hp: 400
   atk: 55
-  atkInterval: 1
-  moveSpeed: 2
+  atkInterval: 1.05
+  moveSpeed: 3
   range: 4
   radius: 0.38
-  isranged: 0
+  isranged: 1
   basicAttack: {fileID: 11400000, guid: 5639a5d4ea323044bb344030644dfbbb, type: 2}
   defaultSkill: {fileID: 0}

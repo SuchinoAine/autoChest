@@ -1,6 +1,6 @@
 using UnityEngine;
 using AutoChess.Configs;
-using AutoChess.Core; // 引入 ChessUnit 所在的命名空间
+using AutoChess.Core;
 
 namespace AutoChess.Managers
 {
@@ -9,15 +9,15 @@ namespace AutoChess.Managers
         public static BenchManager Instance { get; private set; }
 
         [Header("备战区节点配置")]
-        [Tooltip("将层级图中的 Bench 父节点拖入这里，会自动读取它下面的 10 个 pozition")]
+        [Tooltip("将层级图中的 Bench 父节点拖入这里，会自动读取它下面的 10 个 position")]
         public Transform benchRoot;
         
         private Transform[] _benchAnchors;
-        private GameObject[] _benchedUnits;
+        private ChessUnit[] _benchedUnits;
 
         // 暴露给外部 DeployManager (布阵管理器) 读取和修改的属性
         public Transform[] BenchAnchors => _benchAnchors;
-        public GameObject[] BenchedUnits => _benchedUnits;
+        public ChessUnit[] BenchedUnits => _benchedUnits;
 
         private void Awake()
         {
@@ -38,7 +38,7 @@ namespace AutoChess.Managers
                 return;
             }
 
-            _benchedUnits = new GameObject[_benchAnchors.Length];
+            _benchedUnits = new ChessUnit[_benchAnchors.Length];
         }
 
         private void OnEnable() => GameEventBus.OnUnitPurchased += OnUnitPurchased;
@@ -76,23 +76,15 @@ namespace AutoChess.Managers
             {
                 Transform spawnPoint = _benchAnchors[emptyIndex];
                 
-                // 1. 生成并认 pozition 为父节点
-                GameObject newUnit = Instantiate(unitData.prefab, spawnPoint.position, spawnPoint.rotation, spawnPoint);
-                
+                // 1. 生成并认 position 为父节点
+                GameObject newUnit = PoolManager.Instance.GetUnit(unitData, spawnPoint.position, spawnPoint.rotation, spawnPoint);
+
                 // 保持预制体原本的缩放和旋转
                 newUnit.transform.localRotation = unitData.prefab.transform.localRotation;
                 newUnit.transform.localScale = unitData.prefab.transform.localScale;
                 
-                // ✅ 2. 核心：X 和 Z 保持 0 (因为你已手动居中)，只计算并调整 Y 轴 (高度贴地)
-                float offsetY = 0f;
-                MeshFilter mf = newUnit.GetComponentInChildren<MeshFilter>();
-                if (mf != null && mf.sharedMesh != null)
-                {
-                    // 获取网格最低点并反向抬高
-                    offsetY = -mf.sharedMesh.bounds.min.y * newUnit.transform.localScale.y;
-                }
-                
-                Vector3 finalOffset = new Vector3(0, offsetY, 0);
+                // ✅ 2. 模型已手动调整中心点，直接完美居中于锚点即可
+                Vector3 finalOffset = Vector3.zero;
                 newUnit.transform.localPosition = finalOffset;
                 
                 // 3. 加上物理碰撞体 (包住模型，方便鼠标点击拖拽)
@@ -100,7 +92,7 @@ namespace AutoChess.Managers
                 {
                     var col = newUnit.AddComponent<BoxCollider>();
                     col.size = new Vector3(1.5f, 2f, 1.5f); 
-                    col.center = new Vector3(0, 1f, 0);
+                    col.center = new Vector3(0, 1f, 0); // 碰撞体中心点依然稍微上抬一点，方便玩家点到
                 }
 
                 // 4. 挂载身份证，供 DeployManager 拖拽和记录位置使用
@@ -108,10 +100,11 @@ namespace AutoChess.Managers
                 if (chessUnit == null) chessUnit = newUnit.AddComponent<ChessUnit>();
                 
                 chessUnit.Data = unitData;
-                chessUnit.BaseOffset = finalOffset; // 记录偏移量，拖拽松手时完美归位
+                chessUnit.BaseOffset = finalOffset; // 记录偏移量为 0，拖拽松手时完美归零
                 chessUnit.CurrentBenchSlot = emptyIndex;
 
-                _benchedUnits[emptyIndex] = newUnit;
+                _benchedUnits[emptyIndex] = chessUnit;
+                
                 // 升级三星check
                 MergeManager.Instance.CheckForMerge(unitData, 1);
                 
