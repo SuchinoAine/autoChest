@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unitName: "\u53E0\u9635"
   cost: 4
-  cardImage: {fileID: 0}
+  cardImage: {fileID: 383874156, guid: 87b9345ead05cf147be9c581d1324a98, type: 3}
   borderImage: {fileID: 21300000, guid: ec59aa44be9d9e544838fb688cd2ff50, type: 3}
   prefab: {fileID: 8101697547224282419, guid: ab4e5a67e5b43934b9e1f88b6f519d3d, type: 3}
   bonds:

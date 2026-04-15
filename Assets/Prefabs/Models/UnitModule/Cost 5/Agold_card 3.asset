@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9f2c386a1506cbc43b9d12581e73fc31, type: 3}
   m_Name: Agold_card 3
   m_EditorClassIdentifier: 
-  unitName: "\u795E\u6838"
+  unitName: "\u6838\u5FC3"
   cost: 5
-  cardImage: {fileID: 0}
+  cardImage: {fileID: -1363841612, guid: 87b9345ead05cf147be9c581d1324a98, type: 3}
   borderImage: {fileID: 21300000, guid: 740993910d4f4404898e82d3491ca2ed, type: 3}
   prefab: {fileID: 884585833943327786, guid: 50ed9b8beef1e444a95e6f4fd05b199e, type: 3}
   bonds:

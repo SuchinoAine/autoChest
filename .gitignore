@@ -7,13 +7,14 @@
 [Ll]ogs/
 [Uu]serSettings/
 [Pp]lugins/
+
+# Unity Plugins
 Assets/BakedMeshes/
 Assets/polyhedronGenerator/
 Assets/ProBuilder Data/
 Assets/QuickOutline/
 Assets/TextMesh Pro/
-
-
+Assets/AllSkyFree/
 
 # IDE / Editor
 .vs/
@@ -28,6 +29,10 @@ Assets/TextMesh Pro/
 *.pidb
 *.booproj
 *.svd
+
+# Unity3D generated meta files
+*.pidb.meta
+*.pdb.meta
 
 # OS
 .DS_Store

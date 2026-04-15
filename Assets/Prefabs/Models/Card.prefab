@@ -1351,8 +1351,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6cf5a3e2d0fb81f428346ae35aeb6f99, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testOnStart: 0
-  testUnitData: {fileID: 11400000, guid: 825b9985a05f55746a5818923ef84df2, type: 2}
 --- !u!1 &6753226432428436119
 GameObject:
   m_ObjectHideFlags: 0
