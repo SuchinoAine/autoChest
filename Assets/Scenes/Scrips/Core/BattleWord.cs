@@ -56,8 +56,12 @@ namespace AutoChess.Core
 
         private void ResolveGlobalCollisions()
         {
-            int iters = 3; // PBD 迭代次数，3次已经足够稳定
+            int iters = 3; // PBD 迭代次数
             float contactEps = 0.02f;
+
+            // 物理棋盘边界约束（请根据你实际的 Scene 棋盘大小进行修改）
+            float boardMinX = -15f, boardMaxX = 15f;
+            float boardMinZ = -15f, boardMaxZ = 15f;
 
             for (int iter = 0; iter < iters; iter++)
             {
@@ -71,24 +75,25 @@ namespace AutoChess.Core
                         var u2 = Units[j];
                         if (u2.IsDead) continue;
 
+                        // 【核心修改】：只对同队伍的单位进行碰撞排斥
+                        if (u1.Team != u2.Team) continue;
+
                         Vector3 d = u1.Position - u2.Position;
                         d.y = 0f;
                         float distSq = d.sqrMagnitude;
 
-                        // ✅ 防呆保护：如果你在 CardDataSO 里忘了填 Radius，默认给 0.5
                         float r1 = u1.Radius > 0.1f ? u1.Radius : 0.5f;
                         float r2 = u2.Radius > 0.1f ? u2.Radius : 0.5f;
-
                         float minDist = r1 + r2 + contactEps;
 
                         if (distSq < minDist * minDist)
                         {
                             float dist = Mathf.Sqrt(distSq);
                             Vector3 n;
-                            if (dist < 0.001f) // 两个棋子完全重叠时的极端处理
+                            if (dist < 0.001f)
                             {
+                                // 极端重叠时的随机微小排斥
                                 n = new Vector3(UnityEngine.Random.Range(-1f, 1f), 0, UnityEngine.Random.Range(-1f, 1f)).normalized;
-                                if (n == Vector3.zero) n = Vector3.right;
                             }
                             else
                             {
@@ -97,12 +102,23 @@ namespace AutoChess.Core
 
                             float overlap = minDist - dist;
 
-                            // 互相挤压：各承担 50% 的推力
+                            // 队友之间互相让步：各承担 50% 的推力
                             Vector3 corr = n * (overlap * 0.5f);
+
+                            // 最大位移截断，防止瞬移爆破
+                            corr = Vector3.ClampMagnitude(corr, 0.3f);
+
                             u1.Position += corr;
                             u2.Position -= corr;
                         }
                     }
+
+                    // 绝对边界约束兜底，防止被队友挤出棋盘边缘
+                    u1.Position = new Vector3(
+                        Mathf.Clamp(u1.Position.x, boardMinX, boardMaxX),
+                        u1.Position.y,
+                        Mathf.Clamp(u1.Position.z, boardMinZ, boardMaxZ)
+                    );
                 }
             }
 

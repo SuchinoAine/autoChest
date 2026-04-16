@@ -34,32 +34,61 @@ namespace AutoChess.Managers
             else if (Input.GetMouseButtonUp(0) && _draggingUnit != null) Drop();
         }
 
+
         private void TryPickUp()
         {
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             Ray ray = _mainCam.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit))
+
+            // 穿透检测所有命中的碰撞体
+            RaycastHit[] hits = Physics.RaycastAll(ray, 100f);
+
+            ChessUnit bestUnit = null;
+            float closestDist = float.MaxValue;
+
+            foreach (var hit in hits)
             {
                 ChessUnit unit = hit.collider.GetComponent<ChessUnit>();
                 if (unit != null)
                 {
-                    _draggingUnit = unit;
-                    _originalIsOnBoard = unit.IsOnBoard;
-                    if (_originalIsOnBoard)
+                    // 1. 获取棋子的视觉中心点 (假设棋子脚底是0，碰撞体高2，中心在 Y=1 处)
+                    // 这样能确保鼠标点模型身体时，距离计算最精准
+                    Vector3 unitVisualCenter = unit.transform.position + new Vector3(0, 1.0f, 0);
+
+                    // 2. 【核心算法】计算 "玩家点击的射线" 到 "棋子视觉中心" 的空间垂直距离
+                    // 公式：|| 射线方向 叉乘 (中心点 - 射线起点) ||
+                    // 这种算法完全无视相机的倾斜角度和击中部位的高度，是最纯粹的 3D 指向判定
+                    float distToRay = Vector3.Cross(ray.direction, unitVisualCenter - ray.origin).magnitude;
+
+                    if (distToRay < closestDist)
                     {
-                        _originalBoardRow = unit.BoardRow;
-                        _originalBoardCol = unit.BoardCol;
-                        BoardManager.Instance.BoardUnits[_originalBoardRow, _originalBoardCol] = null;
-                    }
-                    else
-                    {
-                        _originalBenchSlot = unit.CurrentBenchSlot;
-                        BenchManager.Instance.BenchedUnits[_originalBenchSlot] = null;
+                        closestDist = distToRay;
+                        bestUnit = unit;
                     }
                 }
             }
+
+            // 3. 执行拾取逻辑
+            if (bestUnit != null)
+            {
+                _draggingUnit = bestUnit;
+                _originalIsOnBoard = bestUnit.IsOnBoard;
+
+                if (_originalIsOnBoard)
+                {
+                    _originalBoardRow = bestUnit.BoardRow;
+                    _originalBoardCol = bestUnit.BoardCol;
+                    BoardManager.Instance.BoardUnits[_originalBoardRow, _originalBoardCol] = null;
+                }
+                else
+                {
+                    _originalBenchSlot = bestUnit.CurrentBenchSlot;
+                    BenchManager.Instance.BenchedUnits[_originalBenchSlot] = null;
+                }
+            }
         }
+
 
         private void Drag()
         {
@@ -77,23 +106,23 @@ namespace AutoChess.Managers
             if (Input.mousePosition.y < Screen.height * 0.05f)
             {
                 int starMultiplier = (int)Mathf.Pow(3, _draggingUnit.StarLevel - 1);
-                int sellPrice = _draggingUnit.Data.cost * starMultiplier; 
-                
+                int sellPrice = _draggingUnit.Data.cost * starMultiplier;
+
                 EconomyManager.Instance.AddGold(sellPrice);
-                
+
                 for (int i = 0; i < starMultiplier; i++)
                 {
                     ShopManager.Instance.SellCardToPool(_draggingUnit.Data);
                 }
-                
+
                 Debug.Log($"<color=orange>💰 出售了 [{_draggingUnit.StarLevel}星 {_draggingUnit.Data.unitName}]，获得了 {sellPrice} 金币，回收了 {starMultiplier} 张卡牌。</color>");
-                
+
                 // ✅ 补齐对象池闭环：放回对象池
                 PoolManager.Instance.ReleaseUnit(_draggingUnit.Data, _draggingUnit.gameObject);
                 _draggingUnit = null;
 
                 if (SynergyManager.Instance != null) SynergyManager.Instance.BroadcastSynergiesToUI();
-                return; 
+                return;
             }
 
             Transform[] benchAnchors = BenchManager.Instance.BenchAnchors;
@@ -145,7 +174,7 @@ namespace AutoChess.Managers
                     if (currentPopulation >= ShopManager.Instance.PlayerLevel)
                     {
                         Debug.LogWarning($"<color=red>❌ 人口已满！当前等级 {ShopManager.Instance.PlayerLevel}，最多只能上阵 {ShopManager.Instance.PlayerLevel} 个棋子。</color>");
-                        targetAnchor = null; 
+                        targetAnchor = null;
                     }
                 }
 
@@ -192,7 +221,7 @@ namespace AutoChess.Managers
                     _draggingUnit.transform.SetParent(targetAnchor);
                 }
             }
-            
+
             if (targetAnchor == null)
             {
                 if (_originalIsOnBoard)
